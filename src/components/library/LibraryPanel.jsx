@@ -1,10 +1,29 @@
 import React, { useState } from 'react';
-import { Palette, Plus, Trash2, Edit2, Save, X, List } from 'lucide-react';
+import { Palette, Plus, Trash2, Edit2, Save, X, List, CalendarClock, AlertCircle } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
 
+const DAYS_OF_WEEK = [
+  { label: 'Seg', value: 0 },
+  { label: 'Ter', value: 1 },
+  { label: 'Qua', value: 2 },
+  { label: 'Qui', value: 3 },
+  { label: 'Sex', value: 4 },
+  { label: 'Sáb', value: 5 },
+];
+
 const ActivityEditor = ({ initialData, onSave, onCancel }) => {
-  const [data, setData] = useState(initialData || { name: '', iconName: 'Rocket', theme: 'blue', defaultTasks: [] });
+  const [data, setData] = useState(initialData || { 
+    name: '', 
+    iconName: 'Rocket', 
+    theme: 'blue', 
+    defaultTasks: [],
+    // Novas propriedades de regras
+    rules: {
+      frequency: 1, // Quantas vezes na semana
+      allowedDays: [0, 1, 2, 3, 4, 5] // Todos os dias (exceto domingo que é fixo)
+    }
+  });
   const [newTask, setNewTask] = useState('');
 
   const addTask = () => {
@@ -18,13 +37,25 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
     setData(prev => ({ ...prev, defaultTasks: prev.defaultTasks.filter((_, i) => i !== index) }));
   };
 
+  const toggleDay = (dayIndex) => {
+    const currentDays = data.rules?.allowedDays || [0,1,2,3,4,5];
+    let newDays;
+    if (currentDays.includes(dayIndex)) {
+      newDays = currentDays.filter(d => d !== dayIndex);
+    } else {
+      newDays = [...currentDays, dayIndex];
+    }
+    setData(prev => ({ ...prev, rules: { ...prev.rules, allowedDays: newDays } }));
+  };
+
   return (
-    <div className="p-5 bg-[#1a1a1a] border border-blue-500/30 rounded-xl space-y-4 animate-in fade-in mb-4">
-      <div className="flex justify-between items-center mb-2">
+    <div className="p-5 bg-[#1a1a1a] border border-blue-500/30 rounded-xl space-y-5 animate-in fade-in mb-4">
+      <div className="flex justify-between items-center border-b border-white/5 pb-2">
         <h3 className="font-bold text-white text-sm">{initialData ? 'Editar Carta' : 'Nova Carta'}</h3>
         <button onClick={onCancel} className="text-white/40 hover:text-white"><X size={16}/></button>
       </div>
       
+      {/* Nome e Cor */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-[10px] uppercase text-white/40 font-bold">Nome</label>
@@ -32,7 +63,7 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
             className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500/50 outline-none" 
             value={data.name}
             onChange={e => setData({...data, name: e.target.value})}
-            placeholder="Ex: Leitura"
+            placeholder="Ex: Academia"
           />
         </div>
         <div>
@@ -47,12 +78,64 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
         </div>
       </div>
 
+      {/* --- SEÇÃO DE REGRAS --- */}
+      <div className="bg-blue-500/5 p-3 rounded-lg border border-blue-500/10 space-y-3">
+        <div className="flex items-center gap-2 text-blue-400 mb-1">
+          <CalendarClock size={14} />
+          <span className="text-xs font-bold uppercase">Regras de Embaralhamento</span>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-white/70">Frequência Semanal:</label>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setData(prev => ({...prev, rules: {...prev.rules, frequency: Math.max(1, (prev.rules?.frequency || 1) - 1)}}))}
+              className="w-6 h-6 bg-black/40 rounded text-white hover:bg-white/10"
+            >-</button>
+            <span className="text-sm font-bold text-white w-4 text-center">{data.rules?.frequency || 1}</span>
+            <button 
+              onClick={() => setData(prev => ({...prev, rules: {...prev.rules, frequency: Math.min(6, (prev.rules?.frequency || 1) + 1)}}))}
+              className="w-6 h-6 bg-black/40 rounded text-white hover:bg-white/10"
+            >+</button>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs text-white/70 block mb-2">Dias Permitidos:</label>
+          <div className="flex gap-1 justify-between">
+            {DAYS_OF_WEEK.map((day) => {
+              const isSelected = data.rules?.allowedDays?.includes(day.value);
+              return (
+                <button
+                  key={day.value}
+                  onClick={() => toggleDay(day.value)}
+                  className={`
+                    flex-1 py-1.5 rounded text-[10px] font-bold transition-all
+                    ${isSelected 
+                      ? `bg-${data.theme === 'white' ? 'gray' : data.theme}-500 text-white shadow-lg` 
+                      : 'bg-black/40 text-white/30 hover:bg-white/5'}
+                  `}
+                >
+                  {day.label}
+                </button>
+              );
+            })}
+          </div>
+          {(!data.rules?.allowedDays || data.rules.allowedDays.length === 0) && (
+            <div className="flex items-center gap-2 mt-2 text-amber-400 text-[10px]">
+              <AlertCircle size={12} /> Selecione pelo menos um dia!
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Lista de Tarefas */}
       <div>
-        <label className="text-[10px] uppercase text-white/40 font-bold mb-1 block">Tarefas para Sorteio</label>
+        <label className="text-[10px] uppercase text-white/40 font-bold mb-1 block">Tarefas (Sorteio)</label>
         <div className="flex gap-2 mb-2">
           <input 
             className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none"
-            placeholder="Digite uma tarefa e enter..."
+            placeholder="Nova tarefa..."
             value={newTask}
             onChange={e => setNewTask(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addTask()}
@@ -65,7 +148,6 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
               {task} <button onClick={() => removeTask(i)} className="hover:text-red-400">×</button>
             </span>
           ))}
-          {(!data.defaultTasks || data.defaultTasks.length === 0) && <span className="text-xs text-white/20 italic">Nenhuma tarefa definida</span>}
         </div>
       </div>
 
@@ -86,10 +168,10 @@ const LibraryPanel = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-bold text-white">Biblioteca</h2>
-          <p className="text-xs text-white/40">Gerencie suas cartas e tarefas</p>
+          <p className="text-xs text-white/40">Defina regras e frequências</p>
         </div>
         <button onClick={() => setIsCreating(true)} className="bg-white text-black font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-200">
-          <Plus size={16} /> Nova Atividade
+          <Plus size={16} /> Nova
         </button>
       </div>
 
@@ -117,8 +199,13 @@ const LibraryPanel = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-sm">{act.name}</h3>
-                    <div className="flex items-center gap-2 text-xs text-white/40">
-                      <List size={12} /> {act.defaultTasks?.length || 0} tarefas possíveis
+                    <div className="flex items-center gap-3 text-xs text-white/40 mt-1">
+                      <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
+                        <CalendarClock size={10} /> {act.rules?.frequency || 1}x/sem
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <List size={10} /> {act.defaultTasks?.length || 0} tarefas
+                      </span>
                     </div>
                   </div>
                 </div>

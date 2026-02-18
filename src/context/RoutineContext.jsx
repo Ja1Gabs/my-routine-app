@@ -5,12 +5,18 @@ const RoutineContext = createContext();
 
 export const useRoutine = () => useContext(RoutineContext);
 
-// Atividades Padrão com Tarefas de Exemplo
+// Atividades Padrão (com regras iniciais)
 const DEFAULT_ACTIVITIES = [
-  { id: 'prog', name: 'Programação', iconName: 'Code2', theme: 'blue', defaultTasks: ['Estudar React', 'Refatorar Context', 'Criar Componentes'] },
-  { id: 'folga', name: 'Folga', iconName: 'Coffee', theme: 'amber', defaultTasks: ['Ver Série', 'Jogar', 'Dormir'] },
-  { id: 'proj1', name: 'Projeto', iconName: 'Rocket', theme: 'emerald', defaultTasks: ['Planejamento', 'Execução'] },
-  { id: 'musica', name: 'Música', iconName: 'Music', theme: 'purple', defaultTasks: ['Praticar Escalas', 'Aprender Música Nova'] },
+  { 
+    id: 'prog', name: 'Programação', iconName: 'Code2', theme: 'blue', 
+    defaultTasks: ['Estudar React', 'Projeto Pessoal'],
+    rules: { frequency: 5, allowedDays: [0,1,2,3,4] } // Seg-Sex
+  },
+  { 
+    id: 'folga', name: 'Folga', iconName: 'Coffee', theme: 'amber', 
+    defaultTasks: ['Ver Série', 'Jogar'],
+    rules: { frequency: 1, allowedDays: [0,1,2,3,4,5] } 
+  },
 ];
 
 const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
@@ -18,43 +24,40 @@ const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'sla
 export const RoutineProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   
-  // Banco de Dados Local
   const [activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
   const [currentWeek, setCurrentWeek] = useState([]);
   const [history, setHistory] = useState({});
   const [goals, setGoals] = useState([]);
   const [config, setConfig] = useState({ theme: 'dark', sundayMode: 'pause' });
 
-  // --- CARREGAMENTO INICIAL ---
+  // --- LOAD & SAVE (Mantido igual) ---
   useEffect(() => {
     const savedUser = JSON.parse(localStorage.getItem('routine_user'));
     if (savedUser) setUser(savedUser);
 
-    const data = JSON.parse(localStorage.getItem('routine_db_v4') || '{}');
+    const data = JSON.parse(localStorage.getItem('routine_db_v5') || '{}');
     if (data.activities) setActivitiesPool(data.activities);
     if (data.currentWeek) setCurrentWeek(data.currentWeek);
     if (data.history) setHistory(data.history);
     if (data.goals) setGoals(data.goals);
     if (data.config) setConfig(data.config);
     
-    // Gera semana inicial se não existir
-    if (!data.currentWeek && savedUser) shuffleWeek(data.activities || DEFAULT_ACTIVITIES);
+    if (!data.currentWeek && savedUser) smartShuffle(data.activities || DEFAULT_ACTIVITIES);
   }, []);
 
-  // --- SALVAMENTO AUTOMÁTICO ---
   useEffect(() => {
     if (user) {
       const db = { activities: activitiesPool, currentWeek, history, goals, config };
-      localStorage.setItem('routine_db_v4', JSON.stringify(db));
+      localStorage.setItem('routine_db_v5', JSON.stringify(db));
     }
   }, [activitiesPool, currentWeek, history, goals, config, user]);
 
-  // --- ACTIONS: AUTH ---
+  // --- AUTH ACTIONS (Mantido igual) ---
   const login = (email, name) => {
     const newUser = { name, email, avatar: `https://ui-avatars.com/api/?name=${name}&background=random` };
     setUser(newUser);
     localStorage.setItem('routine_user', JSON.stringify(newUser));
-    if (currentWeek.length === 0) shuffleWeek();
+    if (currentWeek.length === 0) smartShuffle();
   };
 
   const logout = () => {
@@ -63,13 +66,10 @@ export const RoutineProvider = ({ children }) => {
     window.location.reload();
   };
 
-  // --- ACTIONS: LIBRARY (BIBLIOTECA) ---
   const saveActivity = (activity) => {
     if (activity.id) {
-      // Editar
       setActivitiesPool(prev => prev.map(a => a.id === activity.id ? activity : a));
     } else {
-      // Criar Nova
       setActivitiesPool(prev => [...prev, { ...activity, id: crypto.randomUUID() }]);
     }
   };
@@ -78,26 +78,73 @@ export const RoutineProvider = ({ children }) => {
     setActivitiesPool(prev => prev.filter(a => a.id !== id));
   };
 
-  // --- ACTIONS: ROTINA ---
-  const shuffleWeek = (poolOverride = null) => {
-    let pool = poolOverride || [...activitiesPool];
-    if (pool.length === 0) pool = DEFAULT_ACTIVITIES;
+  // --- ALGORITMO DE EMBARALHAMENTO INTELIGENTE ---
+  const smartShuffle = (poolOverride = null) => {
+    const pool = poolOverride || [...activitiesPool];
+    if (pool.length === 0) return;
 
-    // Garante cartas suficientes
-    let deck = [...pool];
-    while (deck.length < 6) deck = [...deck, ...pool];
-
-    // Sorteia 6 dias e injeta uma tarefa aleatória da lista da atividade
-    const shuffled = deck.sort(() => Math.random() - 0.5).slice(0, 6).map(act => {
-      const randomTask = act.defaultTasks && act.defaultTasks.length > 0 
-        ? act.defaultTasks[Math.floor(Math.random() * act.defaultTasks.length)] 
-        : '';
-      return { ...act, assignedTask: randomTask };
+    // 1. Inicializa semana vazia (6 dias, Seg-Sáb)
+    let weekPlan = new Array(6).fill(null); 
+    
+    // 2. Cria uma lista de "Cartas" baseada na frequência desejada
+    // Ex: Se "Academia" tem freq 3, cria 3 instâncias de Academia
+    let deck = [];
+    pool.forEach(act => {
+      const freq = act.rules?.frequency || 1;
+      for(let i = 0; i < freq; i++) {
+        deck.push({ ...act }); // Clone para não mexer no original
+      }
     });
 
-    // Lógica do Domingo
-    const sunday = config.sundayMode === 'pause' ? FIXED_SUNDAY : shuffled[0]; // Simplificado
-    setCurrentWeek([...shuffled, sunday]);
+    // 3. Embaralha o deck para aleatoriedade inicial
+    deck = deck.sort(() => Math.random() - 0.5);
+
+    // 4. ALGORITMO DE PREENCHIMENTO (Backtracking simplificado)
+    // Tenta encaixar as atividades nos dias permitidos
+    
+    // Passo A: Preenche dias que têm restrições primeiro
+    for (let card of deck) {
+      const allowedDays = card.rules?.allowedDays || [0,1,2,3,4,5];
+      
+      // Tenta encontrar um dia vago que seja permitido para esta carta
+      // Começa procurando aleatoriamente entre os permitidos para não viciar
+      const shuffledPossibleDays = allowedDays.filter(d => d < 6).sort(() => Math.random() - 0.5);
+      
+      let placed = false;
+      for (let dayIndex of shuffledPossibleDays) {
+        if (weekPlan[dayIndex] === null) {
+          // Sorteia uma tarefa específica se houver
+          const randomTask = card.defaultTasks && card.defaultTasks.length > 0 
+            ? card.defaultTasks[Math.floor(Math.random() * card.defaultTasks.length)] 
+            : '';
+          
+          weekPlan[dayIndex] = { ...card, assignedTask: randomTask };
+          placed = true;
+          break; // Carta colocada, vai para a próxima
+        }
+      }
+    }
+
+    // Passo B: Se sobrar buraco (null), preenche com qualquer atividade aleatória do pool
+    // que permita aquele dia
+    for (let i = 0; i < 6; i++) {
+      if (weekPlan[i] === null) {
+        // Filtra atividades que permitem este dia 'i'
+        const candidates = pool.filter(a => 
+          !a.rules?.allowedDays || a.rules.allowedDays.includes(i)
+        );
+        
+        const filler = candidates.length > 0 
+          ? candidates[Math.floor(Math.random() * candidates.length)]
+          : pool[Math.floor(Math.random() * pool.length)]; // Fallback total
+
+        weekPlan[i] = { ...filler, assignedTask: '' };
+      }
+    }
+
+    // 5. Adiciona Domingo
+    const sunday = config.sundayMode === 'pause' ? FIXED_SUNDAY : weekPlan[0]; // Simplificado
+    setCurrentWeek([...weekPlan, sunday]);
   };
 
   const toggleComplete = (dateStr) => {
@@ -111,7 +158,6 @@ export const RoutineProvider = ({ children }) => {
     setGoals(prev => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
   };
 
-  // --- HELPERS ---
   const calculateStreak = () => {
     let streak = 0;
     let date = new Date();
@@ -135,8 +181,9 @@ export const RoutineProvider = ({ children }) => {
       stats: { streak: calculateStreak(), total: Object.values(history).filter(h => h.completed).length },
       actions: {
         login, logout,
-        saveActivity, deleteActivity, // <--- FALTAVAM ESTES!
-        shuffleWeek, toggleComplete,
+        saveActivity, deleteActivity,
+        shuffleWeek: smartShuffle, // Agora usa a versão inteligente
+        toggleComplete,
         addGoal, setConfig
       }
     }}>
