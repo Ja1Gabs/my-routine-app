@@ -1,10 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import './index.css' // <--- ESSA LINHA É OBRIGATÓRIA PARA O CSS FUNCIONAR!
+import './index.css'
+import { RoutineProvider } from './context/RoutineContext.jsx' // Importe o Provider
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <RoutineProvider>
+      <App />
+    </RoutineProvider>
   </React.StrictMode>,
 )
