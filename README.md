@@ -201,3 +201,17 @@ O sistema está sendo constantemente aprimorado, tanto na lógica de geração q
 Projeto desenvolvido como ferramenta pessoal de organização e estudo de algoritmos aplicados à produtividade.
 
 ---
+
+## Imagens da aplicação
+
+<img width="1551" height="938" alt="image" src="https://github.com/user-attachments/assets/e3caff91-2121-4796-bff6-b4c5ab4a6dd8" />
+<img width="1555" height="933" alt="image" src="https://github.com/user-attachments/assets/529069fd-25f9-4ae8-9a41-c035609b174d" />
+<img width="1556" height="939" alt="image" src="https://github.com/user-attachments/assets/fc54a4ec-9a80-4356-80c9-1f1436fc6113" />
+<img width="1559" height="941" alt="image" src="https://github.com/user-attachments/assets/668c78f9-5ff5-4957-bdea-2e331c54fa4b" />
+<img width="1555" height="939" alt="image" src="https://github.com/user-attachments/assets/0762d098-f216-4fdb-979f-c6866cd0535d" />
+<img width="1565" height="936" alt="image" src="https://github.com/user-attachments/assets/96485867-7088-4981-850e-75bae74cabc2" />
+
+
+
+
+
