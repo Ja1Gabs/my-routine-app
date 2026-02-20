@@ -1,165 +1,203 @@
-````markdown
-# 🎯 Random Routine App  
-### Smart Personal Routine Generator with Performance Tracking
+# 🎲 MyRoutine
 
-> A personal productivity app that generates a weekly routine dynamically, using controlled randomness, activity filters, streak tracking, and goal analysis.
+### Smart Randomized Weekly Routine Planner
 
----
-
-## 📖 About the Project
-
-The **Random Routine App** is a personal productivity tool designed to create flexible and adaptive routines based on user-defined activities and intelligent randomization.
-
-Instead of following a rigid schedule, the app allows users to:
-- Create custom activity types (e.g., Programming, Studying, Projects, Rest)
-- Randomly assign them across the week
-- Apply day filters for better control
-- Track performance through streaks and goals
-
-The main idea behind the project is to balance **discipline and flexibility**, avoiding burnout while maintaining consistency in daily habits.
+> Um aplicativo de organização pessoal onde sua rotina é gerada de forma inteligente e aleatória, equilibrando disciplina, desempenho e flexibilidade.
 
 ---
 
-## 🧠 Core Concept
+## 📖 Sobre o Projeto
 
-Traditional routines are static.  
-This app introduces a **controlled random routine system**, where structure exists, but variation keeps the routine engaging and sustainable.
+O **MyRoutine** é um aplicativo de rotina pessoal que utiliza um sistema de **sorteio controlado** para distribuir atividades ao longo da semana.
 
-You define *what* matters.  
-The app decides *when* it happens (within your rules).
+Ao invés de seguir uma agenda fixa e previsível, o app permite que o usuário:
 
----
+* Crie categorias de atividades (ex: programação, estudo, projeto, descanso)
+* Sorteie automaticamente os dias da semana para cada atividade
+* Defina restrições (ex: não estudar domingo, não programar sexta, etc.)
+* Acompanhe desempenho por meio de sistema de streak
+* Estabeleça objetivos semanais e métricas de consistência
 
-## ⚙️ Main Features
-
-### 🎲 Random Weekly Routine Generator
-- Automatically assigns activities to days of the week
-- Prevents repetitive and monotonous schedules
-- Encourages balanced productivity
-
-### 🗓️ Custom Activity Creation
-Users can create their own activity categories, such as:
-- Programming
-- Studying
-- Personal Projects
-- Rest / Break
-- Reading
-- Exercise
-- Any custom habit
-
-### 🔎 Day Filtering System
-- Restrict specific activities to certain days
-- Example:  
-  - Study only on weekdays  
-  - Projects on weekends  
-  - Rest on Sundays  
-- Smart filtering before random generation
-
-### 🔥 Streak Tracking System
-- Track consistency over time
-- Daily completion streaks
-- Motivation through visible progress
-- Habit reinforcement through continuity metrics
-
-### 🎯 Goal System
-- Define personal productivity goals
-- Track completion rates
-- Visualize long-term performance
-- Align routine with personal objectives
-
-### 📊 Performance Analysis
-- Activity completion tracking
-- Streak history
-- Productivity insights based on usage
-- Self-analysis of routine efficiency
+O objetivo do projeto é unir **aleatoriedade estratégica + disciplina estruturada**, criando um sistema que reduz monotonia e aumenta engajamento.
 
 ---
 
-## 🧩 How It Works
+## 🎯 Filosofia do App
 
-1. Create your activity categories  
-2. Set optional day filters (if desired)  
-3. Generate a randomized weekly routine  
-4. Complete your assigned activities  
-5. Track streaks and performance over time  
-6. Adjust goals and regenerate when needed  
+A maioria das rotinas falha por dois motivos:
 
-This creates a dynamic loop of:
-> Planning → Execution → Tracking → Optimization
+1. Excesso de rigidez
+2. Falta de adaptação
+
+O MyRoutine resolve isso com:
+
+* 🎲 Aleatoriedade controlada
+* ⚖️ Equilíbrio entre foco e descanso
+* 📊 Monitoramento de performance
+* 🔥 Sistema de streak para motivação
+
+A ideia é transformar disciplina em um jogo estratégico.
 
 ---
 
-## 🏗️ Project Structure (Example)
+## ⚙️ Funcionalidades Principais
+
+### 🧩 1. Criação de Atividades
+
+Você pode criar quantas atividades quiser, como por exemplo:
+
+* Programação
+* Estudo
+* Projeto pessoal
+* Exercício
+* Folga
+* Leitura
+
+Cada atividade pode conter:
+
+* Nome
+* Categoria
+* Meta semanal
+* Tipo (alta carga mental, leve, descanso, etc.)
+
+---
+
+### 🎲 2. Geração Aleatória de Semana
+
+O sistema distribui automaticamente as atividades pelos dias da semana.
+
+Você pode:
+
+* Definir dias proibidos para certas categorias
+* Fixar atividades obrigatórias
+* Definir quantidade mínima/máxima por semana
+* Balancear carga mental
+
+O algoritmo garante que a semana não fique desbalanceada.
+
+---
+
+### 🔥 3. Sistema de Streak
+
+O app mede consistência com:
+
+* Streak diário
+* Streak semanal
+* Meta de execução
+* Taxa de conclusão (%)
+
+Exemplo:
+
+> 7 dias seguidos cumprindo atividades → 🔥 Streak ativo
+> 90% da meta semanal atingida → 🏆 Semana consistente
+
+---
+
+### 🎯 4. Sistema de Objetivos
+
+Você pode definir:
+
+* Meta de horas semanais
+* Meta por categoria
+* Meta mensal
+* Objetivos específicos (ex: estudar 20h na semana)
+
+O sistema acompanha progresso automaticamente.
+
+---
+
+### 📊 5. Análise de Performance
+
+Relatórios incluem:
+
+* Distribuição de atividades
+* Taxa de cumprimento
+* Histórico de semanas
+* Evolução de streak
+* Gráfico de consistência
+
+Transformando rotina em dados analisáveis.
+
+---
+
+## 🧠 Conceito Central
+
+MyRoutine trabalha com três pilares:
+
+| Pilar            | Descrição                           |
+| ---------------- | ----------------------------------- |
+| 🎲 Aleatoriedade | Reduz monotonia e aumenta adaptação |
+| 🔥 Consistência  | Sistema de streak mantém disciplina |
+| 📊 Métrica       | Dados ajudam a otimizar desempenho  |
+
+---
+
+## 🏗️ Estrutura do Projeto (Exemplo)
 
 ```bash
-random-routine-app/
-├── src/            # Main application logic
-├── components/     # UI components
-├── utils/          # Random generator & logic systems
-├── data/           # User activities and performance data
-└── app/            # Core app configuration
-````
+my-routine-app/
+├── components/
+├── pages/
+├── services/
+├── utils/
+├── context/
+└── app.js
+```
+
+A arquitetura é organizada para permitir:
+
+* Escalabilidade
+* Separação de responsabilidades
+* Fácil manutenção
 
 ---
 
-## 🚀 Use Cases
+## 🚀 Como Executar
 
-* Personal productivity management
-* Study planning
-* Developer routine organization
-* Habit building
-* Burnout prevention through flexible scheduling
-* Gamified self-discipline systems
+```bash
+git clone https://github.com/seu-usuario/my-routine-app.git
+cd my-routine-app
+npm install
+npm run dev
+```
 
----
-
-## 🛠️ Technologies (Customize if needed)
-
-* JavaScript / TypeScript
-* React / Web App (if applicable)
-* Local Storage or Database (for progress tracking)
-* Custom randomization logic engine
-
-*(Edit this section according to your actual stack.)*
+(ajuste conforme a stack utilizada)
 
 ---
 
-## 🎯 Design Philosophy
+## 🎓 Objetivo do Projeto
 
-This app was built with a simple but powerful mindset:
+Este projeto nasceu como:
 
-> Consistency is more sustainable when routines are flexible, not rigid.
+* Ferramenta pessoal de organização
+* Estudo de lógica de geração aleatória
+* Exercício de arquitetura de aplicação
+* Sistema gamificado de produtividade
 
-By combining randomness with control and performance tracking, the system keeps routines:
-
-* Less repetitive
-* More engaging
-* Psychologically sustainable
-* Data-driven
+Ele une programação, lógica algorítmica e produtividade pessoal em uma única aplicação.
 
 ---
 
-## 📈 Future Improvements (Planned)
+## 🔮 Possíveis Melhorias Futuras
 
-* Advanced analytics dashboard
-* Habit difficulty weighting
-* Monthly performance reports
-* Exportable routine schedules
-* AI-assisted routine optimization
-
----
-
-## 🔒 Project Nature
-
-This is a personal project focused on:
-
-* Productivity systems
-* Habit design
-* Logical system architecture
-* Self-management tools
+* Sistema de peso por atividade
+* Inteligência adaptativa (baseada em desempenho anterior)
+* Sistema de penalidade por quebra de streak
+* Sincronização em nuvem
+* Exportação de relatórios
+* Versão mobile
 
 ---
 
-## 👨‍💻 Author
+## 📌 Status do Projeto
 
-Developed as a personal productivity and system design project, combining programming logic, behavioral consistency, and structured randomness to create a smarter routine management experience.
+🛠️ Em desenvolvimento ativo
+O sistema está sendo constantemente aprimorado, tanto na lógica de geração quanto na análise de desempenho.
+
+---
+
+## 👨‍💻 Autor
+
+Projeto desenvolvido como ferramenta pessoal de organização e estudo de algoritmos aplicados à produtividade.
+
+---
