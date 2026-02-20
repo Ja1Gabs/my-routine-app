@@ -1,16 +1,165 @@
-# React + Vite
+````markdown
+# 🎯 Random Routine App  
+### Smart Personal Routine Generator with Performance Tracking
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> A personal productivity app that generates a weekly routine dynamically, using controlled randomness, activity filters, streak tracking, and goal analysis.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 📖 About the Project
 
-## React Compiler
+The **Random Routine App** is a personal productivity tool designed to create flexible and adaptive routines based on user-defined activities and intelligent randomization.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Instead of following a rigid schedule, the app allows users to:
+- Create custom activity types (e.g., Programming, Studying, Projects, Rest)
+- Randomly assign them across the week
+- Apply day filters for better control
+- Track performance through streaks and goals
 
-## Expanding the ESLint configuration
+The main idea behind the project is to balance **discipline and flexibility**, avoiding burnout while maintaining consistency in daily habits.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## 🧠 Core Concept
+
+Traditional routines are static.  
+This app introduces a **controlled random routine system**, where structure exists, but variation keeps the routine engaging and sustainable.
+
+You define *what* matters.  
+The app decides *when* it happens (within your rules).
+
+---
+
+## ⚙️ Main Features
+
+### 🎲 Random Weekly Routine Generator
+- Automatically assigns activities to days of the week
+- Prevents repetitive and monotonous schedules
+- Encourages balanced productivity
+
+### 🗓️ Custom Activity Creation
+Users can create their own activity categories, such as:
+- Programming
+- Studying
+- Personal Projects
+- Rest / Break
+- Reading
+- Exercise
+- Any custom habit
+
+### 🔎 Day Filtering System
+- Restrict specific activities to certain days
+- Example:  
+  - Study only on weekdays  
+  - Projects on weekends  
+  - Rest on Sundays  
+- Smart filtering before random generation
+
+### 🔥 Streak Tracking System
+- Track consistency over time
+- Daily completion streaks
+- Motivation through visible progress
+- Habit reinforcement through continuity metrics
+
+### 🎯 Goal System
+- Define personal productivity goals
+- Track completion rates
+- Visualize long-term performance
+- Align routine with personal objectives
+
+### 📊 Performance Analysis
+- Activity completion tracking
+- Streak history
+- Productivity insights based on usage
+- Self-analysis of routine efficiency
+
+---
+
+## 🧩 How It Works
+
+1. Create your activity categories  
+2. Set optional day filters (if desired)  
+3. Generate a randomized weekly routine  
+4. Complete your assigned activities  
+5. Track streaks and performance over time  
+6. Adjust goals and regenerate when needed  
+
+This creates a dynamic loop of:
+> Planning → Execution → Tracking → Optimization
+
+---
+
+## 🏗️ Project Structure (Example)
+
+```bash
+random-routine-app/
+├── src/            # Main application logic
+├── components/     # UI components
+├── utils/          # Random generator & logic systems
+├── data/           # User activities and performance data
+└── app/            # Core app configuration
+````
+
+---
+
+## 🚀 Use Cases
+
+* Personal productivity management
+* Study planning
+* Developer routine organization
+* Habit building
+* Burnout prevention through flexible scheduling
+* Gamified self-discipline systems
+
+---
+
+## 🛠️ Technologies (Customize if needed)
+
+* JavaScript / TypeScript
+* React / Web App (if applicable)
+* Local Storage or Database (for progress tracking)
+* Custom randomization logic engine
+
+*(Edit this section according to your actual stack.)*
+
+---
+
+## 🎯 Design Philosophy
+
+This app was built with a simple but powerful mindset:
+
+> Consistency is more sustainable when routines are flexible, not rigid.
+
+By combining randomness with control and performance tracking, the system keeps routines:
+
+* Less repetitive
+* More engaging
+* Psychologically sustainable
+* Data-driven
+
+---
+
+## 📈 Future Improvements (Planned)
+
+* Advanced analytics dashboard
+* Habit difficulty weighting
+* Monthly performance reports
+* Exportable routine schedules
+* AI-assisted routine optimization
+
+---
+
+## 🔒 Project Nature
+
+This is a personal project focused on:
+
+* Productivity systems
+* Habit design
+* Logical system architecture
+* Self-management tools
+
+---
+
+## 👨‍💻 Author
+
+Developed as a personal productivity and system design project, combining programming logic, behavioral consistency, and structured randomness to create a smarter routine management experience.
