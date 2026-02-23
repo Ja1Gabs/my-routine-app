@@ -20,8 +20,9 @@ const WeekView = ({ routine, completed, onToggleComplete, onShuffle }) => {
     <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4">
       <div className="flex justify-center">
         <button 
-          onClick={onShuffle}
-          className="bg-[#111] hover:bg-[#1a1a1a] text-white border border-white/10 px-6 py-3 rounded-full flex items-center gap-2 text-sm font-medium transition-all shadow-lg active:scale-95"
+          // --- A CORREÇÃO ESTÁ AQUI EMBAIXO ---
+          onClick={() => onShuffle()} 
+          className="bg-[#111] hover:bg-[#1a1a1a] text-white border border-white/10 px-6 py-3 rounded-full flex items-center gap-2 text-sm font-medium transition-all shadow-lg active:scale-95 cursor-pointer"
         >
           <Shuffle size={16} className="text-white/60" />
           Embaralhar Semana

@@ -5,21 +5,8 @@ const RoutineContext = createContext();
 
 export const useRoutine = () => useContext(RoutineContext);
 
-// Atividades Padrão (com regras iniciais)
-const DEFAULT_ACTIVITIES = [
-  { 
-    id: 'prog', name: 'Programação', iconName: 'Code2', theme: 'blue', 
-    defaultTasks: ['Estudar React', 'Projeto Pessoal'],
-    rules: { frequency: 5, allowedDays: [0,1,2,3,4] } // Seg-Sex
-  },
-  { 
-    id: 'folga', name: 'Folga', iconName: 'Coffee', theme: 'amber', 
-    defaultTasks: ['Ver Série', 'Jogar'],
-    rules: { frequency: 1, allowedDays: [0,1,2,3,4,5] } 
-  },
-];
-
-const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
+// --- SEM ATIVIDADES PADRÃO (COMEÇA VAZIO) ---
+const DEFAULT_ACTIVITIES = [];
 
 export const RoutineProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -28,36 +15,31 @@ export const RoutineProvider = ({ children }) => {
   const [currentWeek, setCurrentWeek] = useState([]);
   const [history, setHistory] = useState({});
   const [goals, setGoals] = useState([]);
-  const [config, setConfig] = useState({ theme: 'dark', sundayMode: 'pause' });
+  const [config, setConfig] = useState({ theme: 'dark' }); // Removemos sundayMode
 
-  // --- LOAD & SAVE (Mantido igual) ---
   useEffect(() => {
     const savedUser = JSON.parse(localStorage.getItem('routine_user'));
     if (savedUser) setUser(savedUser);
 
-    const data = JSON.parse(localStorage.getItem('routine_db_v5') || '{}');
+    const data = JSON.parse(localStorage.getItem('routine_db_v7') || '{}');
     if (data.activities) setActivitiesPool(data.activities);
     if (data.currentWeek) setCurrentWeek(data.currentWeek);
     if (data.history) setHistory(data.history);
     if (data.goals) setGoals(data.goals);
     if (data.config) setConfig(data.config);
-    
-    if (!data.currentWeek && savedUser) smartShuffle(data.activities || DEFAULT_ACTIVITIES);
   }, []);
 
   useEffect(() => {
     if (user) {
       const db = { activities: activitiesPool, currentWeek, history, goals, config };
-      localStorage.setItem('routine_db_v5', JSON.stringify(db));
+      localStorage.setItem('routine_db_v7', JSON.stringify(db));
     }
   }, [activitiesPool, currentWeek, history, goals, config, user]);
 
-  // --- AUTH ACTIONS (Mantido igual) ---
   const login = (email, name) => {
     const newUser = { name, email, avatar: `https://ui-avatars.com/api/?name=${name}&background=random` };
     setUser(newUser);
     localStorage.setItem('routine_user', JSON.stringify(newUser));
-    if (currentWeek.length === 0) smartShuffle();
   };
 
   const logout = () => {
@@ -78,73 +60,69 @@ export const RoutineProvider = ({ children }) => {
     setActivitiesPool(prev => prev.filter(a => a.id !== id));
   };
 
-  // --- ALGORITMO DE EMBARALHAMENTO INTELIGENTE ---
+  // --- ALGORITMO PURO (DOMINGO É DIA NORMAL) ---
   const smartShuffle = (poolOverride = null) => {
-    const pool = poolOverride || [...activitiesPool];
-    if (pool.length === 0) return;
+    const pool = (Array.isArray(poolOverride) && poolOverride.length > 0) ? poolOverride : [...activitiesPool];
 
-    // 1. Inicializa semana vazia (6 dias, Seg-Sáb)
-    let weekPlan = new Array(6).fill(null); 
-    
-    // 2. Cria uma lista de "Cartas" baseada na frequência desejada
-    // Ex: Se "Academia" tem freq 3, cria 3 instâncias de Academia
+    if (!pool || pool.length === 0) {
+        // Se não tiver atividades, cria uma semana vazia para não quebrar a UI
+        setCurrentWeek(new Array(7).fill(null));
+        return;
+    }
+
+    // 1. Inicializa semana de 7 dias (0=Seg ... 6=Dom)
+    let weekPlan = new Array(7).fill(null); 
+
+    // 2. Monta o "Baralho"
     let deck = [];
     pool.forEach(act => {
       const freq = act.rules?.frequency || 1;
       for(let i = 0; i < freq; i++) {
-        deck.push({ ...act }); // Clone para não mexer no original
+        deck.push({ ...act });
       }
     });
 
-    // 3. Embaralha o deck para aleatoriedade inicial
+    // Embaralha
     deck = deck.sort(() => Math.random() - 0.5);
 
-    // 4. ALGORITMO DE PREENCHIMENTO (Backtracking simplificado)
-    // Tenta encaixar as atividades nos dias permitidos
-    
-    // Passo A: Preenche dias que têm restrições primeiro
+    // 3. Preenche (Backtracking Greedy)
     for (let card of deck) {
-      const allowedDays = card.rules?.allowedDays || [0,1,2,3,4,5];
+      // Se não tiver regra de dias, aceita todos (0-6)
+      const allowedDays = card.rules?.allowedDays || [0,1,2,3,4,5,6];
       
-      // Tenta encontrar um dia vago que seja permitido para esta carta
-      // Começa procurando aleatoriamente entre os permitidos para não viciar
-      const shuffledPossibleDays = allowedDays.filter(d => d < 6).sort(() => Math.random() - 0.5);
-      
-      let placed = false;
-      for (let dayIndex of shuffledPossibleDays) {
-        if (weekPlan[dayIndex] === null) {
-          // Sorteia uma tarefa específica se houver
-          const randomTask = card.defaultTasks && card.defaultTasks.length > 0 
+      const validEmptySlots = weekPlan
+        .map((slot, index) => slot === null && allowedDays.includes(index) ? index : -1)
+        .filter(index => index !== -1);
+
+      if (validEmptySlots.length > 0) {
+        const randomDayIndex = validEmptySlots[Math.floor(Math.random() * validEmptySlots.length)];
+        
+        const randomTask = card.defaultTasks && card.defaultTasks.length > 0 
             ? card.defaultTasks[Math.floor(Math.random() * card.defaultTasks.length)] 
             : '';
-          
-          weekPlan[dayIndex] = { ...card, assignedTask: randomTask };
-          placed = true;
-          break; // Carta colocada, vai para a próxima
+
+        weekPlan[randomDayIndex] = { ...card, assignedTask: randomTask };
+      }
+    }
+
+    // 4. Preencher buracos restantes
+    for (let i = 0; i < 7; i++) {
+      if (weekPlan[i] === null) {
+        const validCandidates = pool.filter(a => !a.rules?.allowedDays || a.rules.allowedDays.includes(i));
+        const fillerPool = validCandidates.length > 0 ? validCandidates : pool;
+        
+        const filler = fillerPool[Math.floor(Math.random() * fillerPool.length)];
+
+        if (filler) {
+             const randomTask = filler.defaultTasks && filler.defaultTasks.length > 0 
+            ? filler.defaultTasks[Math.floor(Math.random() * filler.defaultTasks.length)] 
+            : '';
+            weekPlan[i] = { ...filler, assignedTask: randomTask };
         }
       }
     }
 
-    // Passo B: Se sobrar buraco (null), preenche com qualquer atividade aleatória do pool
-    // que permita aquele dia
-    for (let i = 0; i < 6; i++) {
-      if (weekPlan[i] === null) {
-        // Filtra atividades que permitem este dia 'i'
-        const candidates = pool.filter(a => 
-          !a.rules?.allowedDays || a.rules.allowedDays.includes(i)
-        );
-        
-        const filler = candidates.length > 0 
-          ? candidates[Math.floor(Math.random() * candidates.length)]
-          : pool[Math.floor(Math.random() * pool.length)]; // Fallback total
-
-        weekPlan[i] = { ...filler, assignedTask: '' };
-      }
-    }
-
-    // 5. Adiciona Domingo
-    const sunday = config.sundayMode === 'pause' ? FIXED_SUNDAY : weekPlan[0]; // Simplificado
-    setCurrentWeek([...weekPlan, sunday]);
+    setCurrentWeek(weekPlan);
   };
 
   const toggleComplete = (dateStr) => {
@@ -182,7 +160,7 @@ export const RoutineProvider = ({ children }) => {
       actions: {
         login, logout,
         saveActivity, deleteActivity,
-        shuffleWeek: smartShuffle, // Agora usa a versão inteligente
+        shuffleWeek: smartShuffle,
         toggleComplete,
         addGoal, setConfig
       }
