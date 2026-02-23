@@ -1,0 +1,33 @@
+// Conexão com o Banco
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Usuário
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String   // Senha criptografada
+  createdAt DateTime @default(now())
+  
+  // Relação com os dados
+  data      UserData?
+}
+
+// Modelo de Dados (Salva todo o estado do seu app aqui)
+model UserData {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+  
+  // O JSON mágico que guarda: activities, history, goals, config
+  content Json
+  
+  updatedAt DateTime @updatedAt
+}
