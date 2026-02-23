@@ -52,24 +52,64 @@ app.post('/auth/register', async (req, res) => {
 });
 
 // 2. Login
+a// Substitua o app.post('/auth/login'...) por isto:
+
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
+  
+  console.log("1. Tentativa de login para:", email);
+
   try {
+    // 1. Busca usuário
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-
-    const validPass = await bcrypt.compare(password, user.password);
-    if (!validPass) return res.status(400).json({ error: 'Senha incorreta' });
-
-    // Gera Token
-    const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: '7d' });
     
+    if (!user) {
+      console.log("2. Usuário não encontrado no banco.");
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    console.log("2. Usuário encontrado ID:", user.id);
+
+    // 2. Checa senha
+    const validPass = await bcrypt.compare(password, user.password);
+    if (!validPass) {
+      console.log("3. Senha incorreta.");
+      return res.status(401).json({ error: 'Senha incorreta' });
+    }
+    console.log("3. Senha válida.");
+
+    // 3. Verifica JWT_SECRET (O erro comum é aqui!)
+    if (!process.env.JWT_SECRET) {
+      throw new Error("ERRO CRÍTICO: JWT_SECRET não está definido no arquivo .env");
+    }
+
+    // 4. Gera Token
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    console.log("4. Token gerado com sucesso.");
+    
+    // Tenta buscar dados extras (se existirem)
+    let userData = {};
+    try {
+        // Se você mudou o schema para ter UserData separado
+        const dataRecord = await prisma.userData.findUnique({ where: { userId: user.id } });
+        if (dataRecord) userData = dataRecord.content;
+    } catch (err) {
+        console.log("Aviso: Sem dados extras ou tabela antiga.");
+    }
+
     res.json({ 
       token, 
-      user: { name: user.name, email: user.email } 
+      user: { 
+          name: user.name, 
+          email: user.email,
+          avatar: `https://ui-avatars.com/api/?name=${user.name}&background=random`
+      },
+      data: userData 
     });
+
   } catch (error) {
-    res.status(500).json({ error: 'Erro no login' });
+    // --- O ERRO REAL VAI APARECER AQUI ---
+    console.error("❌ ERRO FATAL NO LOGIN:", error); 
+    res.status(500).json({ error: 'Erro interno no servidor', details: error.message });
   }
 });
 
