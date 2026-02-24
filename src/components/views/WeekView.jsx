@@ -27,7 +27,7 @@ const WeekView = ({ routine, completed, onToggleComplete, onShuffle }) => {
           className="bg-primary hover:opacity-90 text-primary-foreground border border-primary/20 px-6 py-3 rounded-full flex items-center gap-2 text-sm font-medium transition-all shadow-lg active:scale-95 cursor-pointer"
         >
           <Shuffle size={16} className="opacity-70" />
-          {t('shuffle')}
+          {t('Embaralhar Rotina')}
         </button>
       </div>
 

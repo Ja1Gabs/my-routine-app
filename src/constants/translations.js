@@ -92,6 +92,7 @@ export const TRANSLATIONS = {
     history: "History",
     config: "Settings",
     online: "Online",
+    "Embaralhar Rotina": "Shuffle Routine",
 
     // --- NEW TRANSLATIONS ---
 
