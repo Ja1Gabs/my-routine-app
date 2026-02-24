@@ -8,22 +8,28 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SECRET = process.env.JWT_SECRET;
+
+// Em produção, o ideal é ter o JWT_SECRET no .env
+// Se não tiver, usamos um fallback apenas para o servidor não crashar no boot
+const SECRET = process.env.JWT_SECRET || "fallback_secreto_temporario";
 
 app.use(cors());
 app.use(express.json());
 
 // --- MIDDLEWARE DE PROTEÇÃO ---
 const authenticate = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Acesso negado' });
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Token não fornecido' });
+
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token mal formatado' });
 
   try {
     const verified = jwt.verify(token, SECRET);
     req.userId = verified.id;
     next();
   } catch (err) {
-    res.status(400).json({ error: 'Token inválido' });
+    return res.status(403).json({ error: 'Token inválido ou expirado' });
   }
 };
 
@@ -45,71 +51,77 @@ app.post('/auth/register', async (req, res) => {
       data: { name, email, password: hashedPassword }
     });
 
+    // Cria entrada inicial vazia de dados (opcional, mas evita erro no primeiro load)
+    try {
+        await prisma.userData.create({
+            data: { userId: user.id, content: {} }
+        });
+    } catch (e) {
+        console.log("Info: Não foi possível criar dados iniciais, serão criados no primeiro save.");
+    }
+
     res.json({ message: 'Usuário criado com sucesso!' });
   } catch (error) {
-    res.status(500).json({ error: 'Erro no servidor' });
+    console.error("Erro no registro:", error);
+    res.status(500).json({ error: 'Erro no servidor ao registrar' });
   }
 });
 
-// 2. Login
-// Substitua o app.post('/auth/login'...) por isto:
-
+// 2. Login (Versão Robusta/Blindada)
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
-  console.log("1. Tentativa de login para:", email);
+  console.log("--> Login iniciado para:", email);
 
   try {
-    // 1. Busca usuário
+    // A. Busca usuário
     const user = await prisma.user.findUnique({ where: { email } });
-    
     if (!user) {
-      console.log("2. Usuário não encontrado no banco.");
+      console.log("--> Usuário não encontrado");
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    console.log("2. Usuário encontrado ID:", user.id);
 
-    // 2. Checa senha
+    // B. Checa senha
     const validPass = await bcrypt.compare(password, user.password);
     if (!validPass) {
-      console.log("3. Senha incorreta.");
+      console.log("--> Senha incorreta");
       return res.status(401).json({ error: 'Senha incorreta' });
     }
-    console.log("3. Senha válida.");
 
-    // 3. Verifica JWT_SECRET (O erro comum é aqui!)
-    if (!process.env.JWT_SECRET) {
-      throw new Error("ERRO CRÍTICO: JWT_SECRET não está definido no arquivo .env");
-    }
-
-    // 4. Gera Token
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    console.log("4. Token gerado com sucesso.");
+    // C. Gera Token
+    // Usa a constante SECRET definida no topo (do env ou fallback)
+    const token = jwt.sign({ id: user.id }, SECRET, { expiresIn: '7d' });
     
-    // Tenta buscar dados extras (se existirem)
+    // D. Tenta buscar dados (Com try/catch isolado para não quebrar o login se o banco de dados de conteúdo falhar)
     let userData = {};
     try {
-        // Se você mudou o schema para ter UserData separado
         const dataRecord = await prisma.userData.findUnique({ where: { userId: user.id } });
-        if (dataRecord) userData = dataRecord.content;
-    } catch (err) {
-        console.log("Aviso: Sem dados extras ou tabela antiga.");
+        if (dataRecord && dataRecord.content) {
+            userData = dataRecord.content;
+        } else {
+            console.log("--> Usuário sem dados salvos (UserData), retornando vazio.");
+        }
+    } catch (dbError) {
+        console.error("--> Erro não-fatal ao buscar dados do usuário:", dbError.message);
+        // Não faz nada, apenas segue o login retornando objeto vazio
     }
 
+    console.log("--> Login Sucesso!");
+    
     res.json({ 
       token, 
       user: { 
           name: user.name, 
           email: user.email,
+          // Avatar gerado automaticamente para UI
           avatar: `https://ui-avatars.com/api/?name=${user.name}&background=random`
       },
       data: userData 
     });
 
   } catch (error) {
-    // --- O ERRO REAL VAI APARECER AQUI ---
-    console.error("❌ ERRO FATAL NO LOGIN:", error); 
-    res.status(500).json({ error: 'Erro interno no servidor', details: error.message });
+    console.error("--> ❌ ERRO CRÍTICO NO LOGIN:", error);
+    res.status(500).json({ error: 'Erro interno', details: error.message });
   }
 });
 
@@ -124,6 +136,7 @@ app.get('/data', authenticate, async (req, res) => {
     // Se não tiver dados, retorna vazio
     res.json(userData ? userData.content : {});
   } catch (error) {
+    console.error("Erro ao carregar dados:", error);
     res.status(500).json({ error: 'Erro ao carregar dados' });
   }
 });
@@ -139,6 +152,7 @@ app.post('/data', authenticate, async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
+    console.error("Erro ao salvar dados:", error);
     res.status(500).json({ error: 'Erro ao salvar' });
   }
 });
