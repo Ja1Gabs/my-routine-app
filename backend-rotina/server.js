@@ -52,7 +52,7 @@ app.post('/auth/register', async (req, res) => {
 });
 
 // 2. Login
-a// Substitua o app.post('/auth/login'...) por isto:
+// Substitua o app.post('/auth/login'...) por isto:
 
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;

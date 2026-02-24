@@ -7,7 +7,7 @@ const RoutineContext = createContext();
 export const useRoutine = () => useContext(RoutineContext);
 
 // URL DO BACKEND (Em dev é localhost, em prod será o link do Render)
-const API_URL = "http://localhost:3000"; 
+const API_URL = "https://my-routine-app-jxx7.onrender.com"; 
 
 const DEFAULT_ACTIVITIES = [];
 const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
