@@ -1,5 +1,14 @@
 import React from 'react';
-import { User, Moon, Sun, LogOut, ShieldAlert, Calendar, LayoutTemplate, Globe } from 'lucide-react';
+import { 
+  User, 
+  Moon, 
+  Sun, 
+  LogOut, 
+  ShieldAlert, 
+  Calendar, 
+  Globe, 
+  Image as ImageIcon // Importado como ImageIcon para clareza
+} from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 
 const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
@@ -18,21 +27,25 @@ const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
 );
 
 const SettingsPanel = () => {
-  const { user, config, actions, activitiesPool, t } = useRoutine(); // Usando t()
+  const { user, config, actions, activitiesPool, t } = useRoutine();
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-20">
       
-      {/* Conta */}
+      {/* Bloco de Conta/Perfil */}
       <div className="p-6 bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-border rounded-xl flex items-center gap-4">
-        <img src={user?.avatar} alt="Avatar" className="w-16 h-16 rounded-full border-2 border-border" />
+        <img 
+          src={user?.avatar || 'https://via.placeholder.com/150'} 
+          alt="Avatar" 
+          className="w-16 h-16 rounded-full border-2 border-border object-cover" 
+        />
         <div>
-          <h2 className="text-xl font-bold text-foreground">{user?.name}</h2>
+          <h2 className="text-xl font-bold text-foreground">{user?.name || 'Usuário'}</h2>
           <p className="text-muted-foreground text-sm">{user?.email}</p>
         </div>
       </div>
 
-      {/* Aparência & Idioma */}
+      {/* Seção: Aparência & Idioma */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase ml-1">{t('appearance')}</h3>
         
@@ -63,14 +76,30 @@ const SettingsPanel = () => {
           action={
             <button 
               onClick={() => actions.setConfig({...config, theme: config.theme === 'dark' ? 'light' : 'dark'})}
-              className="px-3 py-1 bg-secondary text-secondary-foreground text-xs font-bold rounded-lg border border-border"
+              className="px-3 py-1 bg-secondary text-secondary-foreground text-xs font-bold rounded-lg border border-border transition-colors hover:bg-secondary/80"
             >
-              Trocar
+              {t('change')}
             </button>
           } 
         />
 
-        {/* Domingo */}
+        {/* Imagem de Fundo (NOVO) */}
+        <SettingsItem 
+          icon={ImageIcon} 
+          title="Imagem de Fundo" 
+          desc="Cole uma URL de imagem (ex: Unsplash)"
+          action={
+            <input 
+              type="text" 
+              placeholder="https://images.unsplash.com/..."
+              className="w-48 bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground/50"
+              value={config.backgroundImage || ''}
+              onChange={(e) => actions.setConfig({...config, backgroundImage: e.target.value})}
+            />
+          } 
+        />
+
+        {/* Configuração de Domingo */}
         <SettingsItem 
           icon={Calendar} 
           title={t('sunday')} 
@@ -83,7 +112,7 @@ const SettingsPanel = () => {
             >
               <option value="pause">{t('sundayPause')}</option>
               <option value="random">{t('sundayRandom')}</option>
-              <optgroup label="Fixar Atividade">
+              <optgroup label={t('fixActivity') || "Fixar Atividade"}>
                 {activitiesPool.map(a => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
@@ -93,27 +122,35 @@ const SettingsPanel = () => {
         />
       </div>
 
-      {/* Logout */}
+      {/* Seção: Conta & Perigo */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-red-400/60 uppercase ml-1">{t('account')}</h3>
         
+        {/* Reset de Dados */}
         <SettingsItem 
           icon={ShieldAlert} 
           title={t('reset')} 
           danger
           action={
-            <button onClick={() => { if(confirm('Reset?')) localStorage.clear(); window.location.reload(); }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg">
+            <button 
+              onClick={() => { if(confirm('Deseja resetar todos os dados locais?')) { localStorage.clear(); window.location.reload(); } }} 
+              className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg transition-colors"
+            >
               Reset
             </button>
           } 
         />
 
+        {/* Logout */}
         <SettingsItem 
           icon={LogOut} 
           title={t('logout')} 
           danger
           action={
-            <button onClick={actions.logout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg">
+            <button 
+              onClick={actions.logout} 
+              className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg transition-colors"
+            >
               {t('logout')}
             </button>
           } 

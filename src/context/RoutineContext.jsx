@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { format, subDays, startOfWeek, addDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { TRANSLATIONS } from '../constants/translations';
 
 const RoutineContext = createContext();
 
 export const useRoutine = () => useContext(RoutineContext);
 
-// URL DO BACKEND (Em dev é localhost, em prod será o link do Render)
+// URL DO BACKEND
 const API_URL = "https://my-routine-app-jxx7.onrender.com"; 
 
 const DEFAULT_ACTIVITIES = [];
@@ -21,9 +21,15 @@ export const RoutineProvider = ({ children }) => {
   const [currentWeek, setCurrentWeek] = useState([]);
   const [history, setHistory] = useState({});
   const [goals, setGoals] = useState([]);
-  const [config, setConfig] = useState({ theme: 'dark', sundayMode: 'pause', lang: 'pt' });
+  
+  // Configurações (com backgroundImage incluído)
+  const [config, setConfig] = useState({ 
+    theme: 'dark', 
+    sundayMode: 'pause', 
+    lang: 'pt',
+    backgroundImage: '' 
+  });
 
-  // Controle de Salvamento (Debounce)
   const isFirstLoad = useRef(true);
 
   // --- TRADUÇÃO & TEMA ---
@@ -38,16 +44,14 @@ export const RoutineProvider = ({ children }) => {
     root.classList.add(config.theme === 'dark' ? 'dark' : 'light');
   }, [config.theme]);
 
-  // --- 1. CARREGAR DADOS (LOGIN OU SYNC) ---
+  // --- 1. CARREGAR DADOS ---
   useEffect(() => {
     const init = async () => {
-      // Recupera usuário do cache se existir
       const cachedUser = localStorage.getItem('user_data');
       if (token && cachedUser) {
         setUser(JSON.parse(cachedUser));
         await loadDataFromCloud(token);
       } else {
-        // Se não tiver conta, carrega do localStorage antigo (modo offline)
         loadLocalData();
       }
       isFirstLoad.current = false;
@@ -62,13 +66,12 @@ export const RoutineProvider = ({ children }) => {
       });
       if (res.ok) {
         const data = await res.json();
-        // Se o banco estiver vazio, mantém o estado atual ou local
         if (Object.keys(data).length > 0) {
           if (data.activities) setActivitiesPool(data.activities);
           if (data.currentWeek) setCurrentWeek(data.currentWeek);
           if (data.history) setHistory(data.history);
           if (data.goals) setGoals(data.goals);
-          if (data.config) setConfig(data.config);
+          if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
         }
       }
     } catch (error) {
@@ -82,7 +85,7 @@ export const RoutineProvider = ({ children }) => {
     if (data.currentWeek) setCurrentWeek(data.currentWeek);
     if (data.history) setHistory(data.history);
     if (data.goals) setGoals(data.goals);
-    if (data.config) setConfig(data.config);
+    if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
   };
 
   // --- 2. SALVAR DADOS (AUTO-SYNC) ---
@@ -90,11 +93,8 @@ export const RoutineProvider = ({ children }) => {
     if (isFirstLoad.current) return;
 
     const dataToSave = { activities: activitiesPool, currentWeek, history, goals, config };
-
-    // Salva localmente (Backup)
     localStorage.setItem('routine_db_offline', JSON.stringify(dataToSave));
 
-    // Se estiver logado, salva na nuvem
     if (token) {
       const timer = setTimeout(() => {
         fetch(`${API_URL}/data`, {
@@ -105,8 +105,7 @@ export const RoutineProvider = ({ children }) => {
           },
           body: JSON.stringify(dataToSave)
         }).catch(err => console.error("Erro no auto-save:", err));
-      }, 2000); // Salva 2 segundos após parar de mexer (Debounce)
-      
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [activitiesPool, currentWeek, history, goals, config, token]);
@@ -119,15 +118,12 @@ export const RoutineProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user_data', JSON.stringify(data.user));
-      
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -141,11 +137,8 @@ export const RoutineProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })
       });
-      
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      
-      // Auto login após registro
       return login(email, password);
     } catch (error) {
       return { success: false, error: error.message };
@@ -157,11 +150,37 @@ export const RoutineProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
-    // Não limpamos 'routine_db_offline' para não perder dados se o user deslogar sem querer
     window.location.reload();
   };
 
-  // --- APP ACTIONS (Lógica inalterada) ---
+  // --- APP ACTIONS ---
+
+  // Função genérica para atualizar dados de um dia específico (histórico)
+  const updateDayData = (dateStr, newData) => {
+    setHistory(prev => ({
+      ...prev,
+      [dateStr]: { 
+        ...prev[dateStr], 
+        ...newData, 
+        lastUpdated: new Date().toISOString()
+      }
+    }));
+  };
+
+  const toggleComplete = (dateStr) => {
+    setHistory(prev => {
+      const isCompleted = !prev[dateStr]?.completed;
+      return {
+        ...prev,
+        [dateStr]: { 
+          ...prev[dateStr], 
+          completed: isCompleted,
+          lastUpdated: new Date().toISOString()
+        }
+      };
+    });
+  };
+
   const saveActivity = (activity) => {
     if (activity.id) {
       setActivitiesPool(prev => prev.map(a => a.id === activity.id ? activity : a));
@@ -183,7 +202,6 @@ export const RoutineProvider = ({ children }) => {
 
     let weekPlan = new Array(7).fill(null); 
     
-    // Configura Domingo
     if (config.sundayMode === 'pause') {
       weekPlan[6] = FIXED_SUNDAY;
     } else if (config.sundayMode !== 'random') {
@@ -211,7 +229,6 @@ export const RoutineProvider = ({ children }) => {
       }
     }
 
-    // Fallback
     for (let i = 0; i < 7; i++) {
       if (weekPlan[i] === null) {
         const validCandidates = pool.filter(a => !a.rules?.allowedDays || a.rules.allowedDays.includes(i));
@@ -228,10 +245,6 @@ export const RoutineProvider = ({ children }) => {
     setCurrentWeek(weekPlan);
   };
 
-  const toggleComplete = (dateStr) => {
-    setHistory(prev => ({ ...prev, [dateStr]: { ...prev[dateStr], completed: !prev[dateStr]?.completed } }));
-  };
-
   const addGoal = (goal) => {
     setGoals(prev => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
   };
@@ -241,7 +254,8 @@ export const RoutineProvider = ({ children }) => {
     let date = new Date();
     if (!history[format(date, 'yyyy-MM-dd')]?.completed) date = subDays(date, 1);
     while (true) {
-      if (history[format(date, 'yyyy-MM-dd')]?.completed) { streak++; date = subDays(date, 1); }
+      const ds = format(date, 'yyyy-MM-dd');
+      if (history[ds]?.completed) { streak++; date = subDays(date, 1); }
       else break;
     }
     return streak;
@@ -254,8 +268,10 @@ export const RoutineProvider = ({ children }) => {
       completedDays: Object.keys(history).reduce((acc, k) => { acc[k] = history[k].completed; return acc; }, {}),
       stats: { streak: calculateStreak(), total: Object.values(history).filter(h => h.completed).length },
       actions: {
-        login, register, logout, // Ações reais
-        saveActivity, deleteActivity, shuffleWeek, toggleComplete, addGoal, setConfig
+        login, register, logout,
+        saveActivity, deleteActivity, shuffleWeek, 
+        toggleComplete, updateDayData, // <--- NOVA FUNÇÃO EXPORTADA
+        addGoal, setConfig
       }
     }}>
       {children}
