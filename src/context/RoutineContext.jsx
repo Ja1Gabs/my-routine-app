@@ -22,7 +22,7 @@ export const RoutineProvider = ({ children }) => {
   const [history, setHistory] = useState({});
   const [goals, setGoals] = useState([]);
   
-  // Configurações (com backgroundImage incluído)
+  // Configurações com backgroundImage incluído
   const [config, setConfig] = useState({ 
     theme: 'dark', 
     sundayMode: 'pause', 
@@ -44,7 +44,7 @@ export const RoutineProvider = ({ children }) => {
     root.classList.add(config.theme === 'dark' ? 'dark' : 'light');
   }, [config.theme]);
 
-  // --- 1. CARREGAR DADOS ---
+  // --- 1. CARREGAR DADOS (LOGIN OU SYNC) ---
   useEffect(() => {
     const init = async () => {
       const cachedUser = localStorage.getItem('user_data');
@@ -71,11 +71,12 @@ export const RoutineProvider = ({ children }) => {
           if (data.currentWeek) setCurrentWeek(data.currentWeek);
           if (data.history) setHistory(data.history);
           if (data.goals) setGoals(data.goals);
+          // Mescla config para não perder campos novos como backgroundImage
           if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
         }
       }
     } catch (error) {
-      console.error("Erro ao sincronizar:", error);
+      console.error("Erro ao sincronizar nuvem:", error);
     }
   };
 
@@ -88,7 +89,7 @@ export const RoutineProvider = ({ children }) => {
     if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
   };
 
-  // --- 2. SALVAR DADOS (AUTO-SYNC) ---
+  // --- 2. SALVAR DADOS (AUTO-SYNC COM DEBOUNCE) ---
   useEffect(() => {
     if (isFirstLoad.current) return;
 
@@ -104,7 +105,7 @@ export const RoutineProvider = ({ children }) => {
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(dataToSave)
-        }).catch(err => console.error("Erro no auto-save:", err));
+        }).catch(err => console.error("Erro no auto-save nuvem:", err));
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -120,6 +121,7 @@ export const RoutineProvider = ({ children }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('auth_token', data.token);
@@ -155,7 +157,7 @@ export const RoutineProvider = ({ children }) => {
 
   // --- APP ACTIONS ---
 
-  // Função genérica para atualizar dados de um dia específico (histórico)
+  // Função robusta para atualizar qualquer dado do dia (imagem, notas, tarefas)
   const updateDayData = (dateStr, newData) => {
     setHistory(prev => ({
       ...prev,
@@ -169,12 +171,12 @@ export const RoutineProvider = ({ children }) => {
 
   const toggleComplete = (dateStr) => {
     setHistory(prev => {
-      const isCompleted = !prev[dateStr]?.completed;
+      const current = prev[dateStr] || {};
       return {
         ...prev,
         [dateStr]: { 
-          ...prev[dateStr], 
-          completed: isCompleted,
+          ...current, 
+          completed: !current.completed,
           lastUpdated: new Date().toISOString()
         }
       };
@@ -252,11 +254,16 @@ export const RoutineProvider = ({ children }) => {
   const calculateStreak = () => {
     let streak = 0;
     let date = new Date();
+    // Se hoje não está completo, começa a contar de ontem
     if (!history[format(date, 'yyyy-MM-dd')]?.completed) date = subDays(date, 1);
     while (true) {
       const ds = format(date, 'yyyy-MM-dd');
-      if (history[ds]?.completed) { streak++; date = subDays(date, 1); }
-      else break;
+      if (history[ds]?.completed) { 
+        streak++; 
+        date = subDays(date, 1); 
+      } else {
+        break;
+      }
     }
     return streak;
   };
@@ -270,7 +277,7 @@ export const RoutineProvider = ({ children }) => {
       actions: {
         login, register, logout,
         saveActivity, deleteActivity, shuffleWeek, 
-        toggleComplete, updateDayData, // <--- NOVA FUNÇÃO EXPORTADA
+        toggleComplete, updateDayData, 
         addGoal, setConfig
       }
     }}>
