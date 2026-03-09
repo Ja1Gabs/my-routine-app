@@ -96,48 +96,56 @@ body {
 }
 
 /* =========================================
-   SCROLLBAR DE VIDRO (GLASSMORPHISM)
+   SCROLLBAR DE VIDRO (CUSTOM CLASS)
    ========================================= */
 
-/* Tamanho e fundo (invisível) */
-::-webkit-scrollbar {
-  width: 6px;  /* Vertical */
-  height: 8px; /* Horizontal (Carrossel da Semana) */
+/* Tamanho da barra no container específico */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px; /* Altura da barra horizontal */
+  width: 8px;
 }
 
-::-webkit-scrollbar-track {
+/* Fundo da barra transparente */
+.custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-}
-
-/* O "Puxador" da barra */
-::-webkit-scrollbar-thumb {
-  background: rgba(150, 150, 150, 0.2); /* Cor de vidro neutra */
-  backdrop-filter: blur(10px);
   border-radius: 10px;
-  /* O border solid com background-clip cria um "padding" interno na barra */
-  border: 2px solid transparent; 
+}
+
+/* O puxador (Thumb) - Modo Escuro (Padrão) */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  border: 2px solid transparent;
   background-clip: padding-box;
 }
 
-/* Hover na barra */
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 150, 150, 0.4);
-  background-clip: padding-box;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Para navegadores Firefox (Padrão web atualizado) */
-* {
+/* O puxador (Thumb) - Modo Claro */
+.light .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+.light .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Suporte para Firefox */
+.custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.light .custom-scrollbar {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
-/* Classe utilitária para ocultar a barra completamente em elementos específicos 
-   (Ex: Listas curtas, onde queremos rolagem por toque/mouse mas sem a barra visual) */
+/* Esconder barra de navegação principal (Abas) */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
 .no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none;    /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
