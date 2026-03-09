@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { format, subDays } from 'date-fns';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import { format, subDays, startOfWeek, addDays } from 'date-fns';
 import { TRANSLATIONS } from '../constants/translations';
 
 const RoutineContext = createContext();
@@ -22,7 +22,7 @@ export const RoutineProvider = ({ children }) => {
   const [history, setHistory] = useState({});
   const [goals, setGoals] = useState([]);
   
-  // Configurações com backgroundImage incluído
+  // Configurações
   const [config, setConfig] = useState({ 
     theme: 'dark', 
     sundayMode: 'pause', 
@@ -71,7 +71,6 @@ export const RoutineProvider = ({ children }) => {
           if (data.currentWeek) setCurrentWeek(data.currentWeek);
           if (data.history) setHistory(data.history);
           if (data.goals) setGoals(data.goals);
-          // Mescla config para não perder campos novos como backgroundImage
           if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
         }
       }
@@ -155,17 +154,76 @@ export const RoutineProvider = ({ children }) => {
     window.location.reload();
   };
 
-  // --- APP ACTIONS ---
+  // --- CALCULADORA DE SEQUÊNCIAS (STREAKS) ---
+  const stats = useMemo(() => {
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
 
-  // Função robusta para atualizar qualquer dado do dia (imagem, notas, tarefas)
+    // 1. SEQUÊNCIA DIÁRIA
+    let daily = 0;
+    let dDate = today;
+
+    // Se hoje ou ontem foram feitos, a sequência continua
+    const hasToday = history[todayStr]?.completed;
+    const hasYesterday = history[yesterdayStr]?.completed;
+
+    if (hasToday || hasYesterday) {
+      // Se não fez hoje, mas fez ontem, começa a contar de ontem
+      if (!hasToday) dDate = subDays(today, 1);
+      
+      while (true) {
+        const dateStr = format(dDate, 'yyyy-MM-dd');
+        if (history[dateStr]?.completed) {
+          daily++;
+          dDate = subDays(dDate, 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    // 2. SEQUÊNCIA SEMANAL (Semanas Perfeitas)
+    let weekly = 0;
+    let wStart = startOfWeek(today, { weekStartsOn: 1 });
+
+    // Checa a semana atual (só conta se for perfeita E já passou)
+    // Para simplificar: checa se todas as semanas passadas foram perfeitas
+    let checkStart = wStart;
+    
+    // Opcional: Se quiser que a semana atual some no contador assim que fechar o 7º dia:
+    const isWeekPerfect = (start) => {
+      for (let i = 0; i < 7; i++) {
+        if (!history[format(addDays(start, i), 'yyyy-MM-dd')]?.completed) return false;
+      }
+      return true;
+    };
+
+    if (isWeekPerfect(checkStart)) weekly++;
+
+    // Verifica semanas anteriores
+    checkStart = subDays(checkStart, 7);
+    while (true) {
+      if (isWeekPerfect(checkStart)) {
+        weekly++;
+        checkStart = subDays(checkStart, 7);
+      } else {
+        break;
+      }
+    }
+
+    return {
+      dailyStreak: daily,
+      weeklyStreak: weekly,
+      totalCompleted: Object.values(history).filter(h => h.completed).length
+    };
+  }, [history]);
+
+  // --- APP ACTIONS ---
   const updateDayData = (dateStr, newData) => {
     setHistory(prev => ({
       ...prev,
-      [dateStr]: { 
-        ...prev[dateStr], 
-        ...newData, 
-        lastUpdated: new Date().toISOString()
-      }
+      [dateStr]: { ...prev[dateStr], ...newData, lastUpdated: new Date().toISOString() }
     }));
   };
 
@@ -174,11 +232,7 @@ export const RoutineProvider = ({ children }) => {
       const current = prev[dateStr] || {};
       return {
         ...prev,
-        [dateStr]: { 
-          ...current, 
-          completed: !current.completed,
-          lastUpdated: new Date().toISOString()
-        }
+        [dateStr]: { ...current, completed: !current.completed, lastUpdated: new Date().toISOString() }
       };
     });
   };
@@ -225,19 +279,20 @@ export const RoutineProvider = ({ children }) => {
 
       if (validEmptySlots.length > 0) {
         const randomDayIndex = validEmptySlots[Math.floor(Math.random() * validEmptySlots.length)];
-        const randomTask = card.defaultTasks && card.defaultTasks.length > 0 
+        const randomTask = card.defaultTasks?.length > 0 
             ? card.defaultTasks[Math.floor(Math.random() * card.defaultTasks.length)] : '';
         weekPlan[randomDayIndex] = { ...card, assignedTask: randomTask };
       }
     }
 
+    // Preenchimento de segurança para dias vazios
     for (let i = 0; i < 7; i++) {
       if (weekPlan[i] === null) {
         const validCandidates = pool.filter(a => !a.rules?.allowedDays || a.rules.allowedDays.includes(i));
         const fillerPool = validCandidates.length > 0 ? validCandidates : pool;
         const filler = fillerPool[Math.floor(Math.random() * fillerPool.length)];
         if (filler) {
-             const randomTask = filler.defaultTasks && filler.defaultTasks.length > 0 ? filler.defaultTasks[Math.floor(Math.random() * filler.defaultTasks.length)] : '';
+             const randomTask = filler.defaultTasks?.length > 0 ? filler.defaultTasks[Math.floor(Math.random() * filler.defaultTasks.length)] : '';
             weekPlan[i] = { ...filler, assignedTask: randomTask };
         } else {
             weekPlan[i] = FIXED_SUNDAY;
@@ -251,29 +306,11 @@ export const RoutineProvider = ({ children }) => {
     setGoals(prev => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
   };
 
-  const calculateStreak = () => {
-    let streak = 0;
-    let date = new Date();
-    // Se hoje não está completo, começa a contar de ontem
-    if (!history[format(date, 'yyyy-MM-dd')]?.completed) date = subDays(date, 1);
-    while (true) {
-      const ds = format(date, 'yyyy-MM-dd');
-      if (history[ds]?.completed) { 
-        streak++; 
-        date = subDays(date, 1); 
-      } else {
-        break;
-      }
-    }
-    return streak;
-  };
-
   return (
     <RoutineContext.Provider value={{
       user, config, t,
       currentWeek, activitiesPool, history, goals,
-      completedDays: Object.keys(history).reduce((acc, k) => { acc[k] = history[k].completed; return acc; }, {}),
-      stats: { streak: calculateStreak(), total: Object.values(history).filter(h => h.completed).length },
+      stats,
       actions: {
         login, register, logout,
         saveActivity, deleteActivity, shuffleWeek, 

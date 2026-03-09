@@ -1,10 +1,10 @@
 export const TRANSLATIONS = {
   pt: {
-    // ... (Mantenha o que já existia) ...
+    // App Basics
     appTitle: "Minha Rotina",
     appSubtitle: "Organize sua semana de forma criativa",
     
-    // Auth & Tabs (Já existentes...)
+    // Auth & Tabs
     week: "Semana",
     library: "Biblioteca",
     goals: "Metas",
@@ -13,8 +13,6 @@ export const TRANSLATIONS = {
     config: "Config",
     online: "Online",
 
-    // --- NOVAS TRADUÇÕES ---
-    
     // Goals Panel
     myGoals: "Meus Objetivos",
     trackProgress: "Acompanhe seu progresso",
@@ -34,6 +32,10 @@ export const TRANSLATIONS = {
     thisMonth: "Este Mês",
     days: "dias",
     byActivity: "Por Atividade (Total)",
+    dailyStreak: "Sequência de Dias",
+    weeklyStreak: "Semanas Seguidas",
+    currentWeekTracker: "Progresso desta Semana",
+    perfectWeeks: "Semanas Perfeitas",
 
     // History Panel
     historyTitle: "Histórico de Semanas",
@@ -49,7 +51,7 @@ export const TRANSLATIONS = {
     saveNotes: "Salvar",
     raffleTask: "Sorteado",
 
-    // ... (Restante do arquivo) ...
+    // Library
     libTitle: "Biblioteca",
     libSubtitle: "Gerencie suas cartas e regras",
     newCard: "Nova Carta",
@@ -67,6 +69,7 @@ export const TRANSLATIONS = {
     noTasks: "Sem tarefas",
     saveCard: "Salvar",
     
+    // Config & Appearance
     appearance: "Aparência",
     theme: "Tema",
     darkMode: "Escuro",
@@ -76,15 +79,17 @@ export const TRANSLATIONS = {
     sundayDesc: "Modo de Domingo",
     sundayPause: "Pausa",
     sundayRandom: "Sorteio",
+    shuffleRoutine: "Embaralhar Rotina",
     account: "Conta",
     logout: "Sair",
     reset: "Resetar"
   },
   en: {
-    // ... (Existing keys) ...
+    // App Basics
     appTitle: "My Routine",
     appSubtitle: "Organize your week creatively",
 
+    // Auth & Tabs
     week: "Week",
     library: "Library",
     goals: "Goals",
@@ -92,9 +97,6 @@ export const TRANSLATIONS = {
     history: "History",
     config: "Settings",
     online: "Online",
-    "Embaralhar Rotina": "Shuffle Routine",
-
-    // --- NEW TRANSLATIONS ---
 
     // Goals Panel
     myGoals: "My Goals",
@@ -115,6 +117,10 @@ export const TRANSLATIONS = {
     thisMonth: "This Month",
     days: "days",
     byActivity: "By Activity (Total)",
+    dailyStreak: "Daily Streak",
+    weeklyStreak: "Weekly Streak",
+    currentWeekTracker: "Current Week Progress",
+    perfectWeeks: "Perfect Weeks",
 
     // History Panel
     historyTitle: "Weekly History",
@@ -130,7 +136,7 @@ export const TRANSLATIONS = {
     saveNotes: "Save",
     raffleTask: "Raffled",
 
-    // ... (Rest of file) ...
+    // Library
     libTitle: "Library",
     libSubtitle: "Manage cards and rules",
     newCard: "New Card",
@@ -148,6 +154,7 @@ export const TRANSLATIONS = {
     noTasks: "No tasks",
     saveCard: "Save",
 
+    // Config & Appearance
     appearance: "Appearance",
     theme: "Theme",
     darkMode: "Dark",
@@ -157,6 +164,7 @@ export const TRANSLATIONS = {
     sundayDesc: "Sunday Mode",
     sundayPause: "Pause",
     sundayRandom: "Shuffle",
+    shuffleRoutine: "Shuffle Routine",
     account: "Account",
     logout: "Logout",
     reset: "Reset"
