@@ -9,7 +9,7 @@ export const useRoutine = () => useContext(RoutineContext);
 // URL DO BACKEND
 const API_URL = "https://my-routine-app-jxx7.onrender.com"; 
 
-const DEFAULT_ACTIVITIES = [];
+const DEFAULT_ACTIVITIES =[];
 const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
 
 export const RoutineProvider = ({ children }) => {
@@ -44,7 +44,7 @@ export const RoutineProvider = ({ children }) => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(config.theme === 'dark' ? 'dark' : 'light');
-  }, [config.theme]);
+  },[config.theme]);
 
   // --- 1. CARREGAR DADOS (CLOUD OU LOCAL) ---
   useEffect(() => {
@@ -157,21 +157,32 @@ export const RoutineProvider = ({ children }) => {
     window.location.reload();
   };
 
-  // --- STATS ENGINE (Suporta Turnos) ---
+  // --- COMPLETED DAYS MAPPER (Correção para Calendário e Histórico) ---
+  // Transforma os turnos do history matricial em um mapa { "2026-03-09": true }
+  const completedDays = useMemo(() => {
+    const shiftsToCheck = config.routineMode === 'shifts' && config.activeShifts?.length > 0 ? config.activeShifts : ['default'];
+    const datesObj = {};
+    const uniqueDates = [...new Set(Object.keys(history).map(k => k.split('_')[0]))];
+    
+    uniqueDates.forEach(dateStr => {
+      // O dia só está "completado" no calendário se TODOS os turnos daquele dia estiverem marcados
+      datesObj[dateStr] = shiftsToCheck.every(s => history[`${dateStr}_${s}`]?.completed);
+    });
+    return datesObj;
+  }, [history, config.routineMode, config.activeShifts]);
+
+
+  // --- STATS ENGINE (Baseado no completedDays para evitar crashs) ---
   const stats = useMemo(() => {
     const today = new Date();
-    const activeShifts = config.routineMode === 'shifts' ? config.activeShifts : ['default'];
-
-    const isDayCompleted = (date) => {
-      const dStr = format(date, 'yyyy-MM-dd');
-      return activeShifts.every(s => history[`${dStr}_${s}`]?.completed);
-    };
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
 
     // 1. Sequência Diária
     let daily = 0;
-    if (isDayCompleted(today) || isDayCompleted(subDays(today, 1))) {
-      let checkDate = isDayCompleted(today) ? today : subDays(today, 1);
-      while (isDayCompleted(checkDate)) {
+    if (completedDays[todayStr] || completedDays[yesterdayStr]) {
+      let checkDate = completedDays[todayStr] ? today : subDays(today, 1);
+      while (completedDays[format(checkDate, 'yyyy-MM-dd')]) {
         daily++;
         checkDate = subDays(checkDate, 1);
       }
@@ -183,7 +194,7 @@ export const RoutineProvider = ({ children }) => {
     
     const checkWeek = (start) => {
       for (let i = 0; i < 7; i++) {
-        if (!isDayCompleted(addDays(start, i))) return false;
+        if (!completedDays[format(addDays(start, i), 'yyyy-MM-dd')]) return false;
       }
       return true;
     };
@@ -201,9 +212,9 @@ export const RoutineProvider = ({ children }) => {
     return {
       dailyStreak: daily,
       weeklyStreak: weekly,
-      totalCompleted: Object.values(history).filter(h => h.completed).length
+      totalCompleted: Object.values(history).filter(h => h.completed).length // Conta turnos/atividades individuais
     };
-  }, [history, config.activeShifts, config.routineMode]);
+  }, [completedDays, history]);
 
   // --- APP ACTIONS ---
   const updateDayData = (dateStr, shiftKey, newData) => {
@@ -232,7 +243,18 @@ export const RoutineProvider = ({ children }) => {
   // SHUFFLE MATRICIAL
   const shuffleWeek = (poolOverride = null) => {
     const pool = (Array.isArray(poolOverride) && poolOverride.length > 0) ? poolOverride : [...activitiesPool];
-    const targetShifts = config.routineMode === 'shifts' ? config.activeShifts : ['default'];
+    const targetShifts = config.routineMode === 'shifts' ? (config.activeShifts?.length > 0 ? config.activeShifts :['morning']) : ['default'];
+
+    // Se a pool estiver vazia, cria matriz vazia
+    if (!pool || pool.length === 0) {
+      const emptyWeek = Array.from({length: 7}, () => {
+         let dayObj = {};
+         targetShifts.forEach(s => dayObj[s] = null);
+         return dayObj;
+      });
+      setCurrentWeek(emptyWeek);
+      return;
+    }
 
     let weekPlan = Array.from({ length: 7 }, () => {
       let dayObj = {};
@@ -245,11 +267,11 @@ export const RoutineProvider = ({ children }) => {
       targetShifts.forEach(s => weekPlan[6][s] = FIXED_SUNDAY);
     } else if (config.sundayMode !== 'random') {
       const fixedAct = pool.find(a => a.id === config.sundayMode);
-      if (fixedAct) targetShifts.forEach(s => weekPlan[6][s] = { ...fixedAct, fixed: true });
+      if (fixedAct) targetShifts.forEach(s => weekPlan[6][s] = { ...fixedAct, assignedTask: '', fixed: true });
     }
 
     // Deck & Distribuição
-    let deck = [];
+    let deck =[];
     pool.forEach(act => {
       const freq = act.rules?.frequency || 1;
       for (let i = 0; i < freq; i++) deck.push({ ...act });
@@ -257,7 +279,7 @@ export const RoutineProvider = ({ children }) => {
     deck = deck.sort(() => Math.random() - 0.5);
 
     for (let card of deck) {
-      const allowedDays = card.rules?.allowedDays || [0, 1, 2, 3, 4, 5, 6];
+      const allowedDays = card.rules?.allowedDays ||[0, 1, 2, 3, 4, 5, 6];
       const allowedShifts = card.rules?.allowedShifts || targetShifts;
       let placed = false;
 
@@ -265,7 +287,7 @@ export const RoutineProvider = ({ children }) => {
         if (dIdx > 6) continue;
         for (let sKey of allowedShifts.sort(() => Math.random() - 0.5)) {
           if (targetShifts.includes(sKey) && weekPlan[dIdx][sKey] === null) {
-            const tasks = card.defaultTasks || [];
+            const tasks = card.defaultTasks ||[];
             const randomTask = tasks.length > 0 ? tasks[Math.floor(Math.random() * tasks.length)] : '';
             weekPlan[dIdx][sKey] = { ...card, assignedTask: randomTask };
             placed = true;
@@ -276,7 +298,7 @@ export const RoutineProvider = ({ children }) => {
       }
     }
 
-    // Fill Gaps
+    // Preenchimento de Gaps
     for (let i = 0; i < 7; i++) {
       for (let s of targetShifts) {
         if (weekPlan[i][s] === null) {
@@ -302,6 +324,7 @@ export const RoutineProvider = ({ children }) => {
     <RoutineContext.Provider value={{
       user, config, t,
       currentWeek, activitiesPool, history, goals,
+      completedDays, // <-- Exportado com segurança para o UI/Calendar não quebrar
       stats,
       actions: {
         login, register, logout,

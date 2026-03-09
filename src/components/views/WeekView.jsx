@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
-import { ptBR, enUS } from 'date-fns/locale'; // Importação segura dos locales
+import { ptBR, enUS } from 'date-fns/locale';
 import { 
   Shuffle, Code2, Coffee, Rocket, Music, Palette, 
   Moon, Book, Dumbbell, Gamepad, Heart, Briefcase, 
@@ -29,7 +29,7 @@ const WeekView = () => {
   // Define o início da semana sempre na Segunda-feira (weekStartsOn: 1)
   const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
   
-  const [expandedDays, setExpandedDays] = useState({});
+  const[expandedDays, setExpandedDays] = useState({});
 
   const toggleExpand = (key) => {
     setExpandedDays(prev => ({ ...prev, [key]: !prev[key] }));
@@ -58,7 +58,7 @@ const WeekView = () => {
       </div>
 
       {/* Grid da Semana */}
-      {/* Se estiver no modo turnos e houver muitos turnos, a grid pode se ajustar melhor (ex: colunas mais largas) */}
+      {/* Se estiver no modo turnos e houver muitos turnos, a grid se ajusta para 7 colunas em telas grandes */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 ${config.routineMode === 'shifts' ? 'lg:grid-cols-7' : 'lg:grid-cols-4'} gap-6 items-start`}>
         
         {/* Garantimos um loop de 7 dias, mesmo que currentWeek esteja vazio no primeiro load */}
@@ -97,7 +97,7 @@ const WeekView = () => {
 
                   return (
                     <div key={shift} className="relative">
-                      {/* Badge do Turno (aparece acima do card no modo turnos) */}
+                      {/* Badge do Turno (aparece acima do card apenas no modo turnos) */}
                       {config.routineMode === 'shifts' && (
                         <div className="absolute -top-3 -left-2 z-20 bg-card border border-border p-1.5 rounded-full shadow-sm" title={t(shift)}>
                           {SHIFT_ICONS[shift] || <Sun size={14} />}
