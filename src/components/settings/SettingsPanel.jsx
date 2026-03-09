@@ -7,10 +7,12 @@ import {
   ShieldAlert, 
   Calendar, 
   Globe, 
-  Image as ImageIcon // Importado como ImageIcon para clareza
+  Image as ImageIcon,
+  LayoutTemplate
 } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 
+// Componente base para itens de configuração simples
 const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
   <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
     <div className="flex items-center gap-4">
@@ -45,7 +47,84 @@ const SettingsPanel = () => {
         </div>
       </div>
 
-      {/* Seção: Aparência & Idioma */}
+      {/* --- NOVA SEÇÃO: ESTRUTURA DA ROTINA --- */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase ml-1">Estrutura da Rotina</h3>
+        
+        {/* Formato da Rotina (Simples vs Turnos) */}
+        <div className="p-4 bg-card border border-border rounded-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <LayoutTemplate size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-foreground">{t('routineFormat')}</h3>
+                <p className="text-xs text-muted-foreground">Como seus dias são divididos</p>
+              </div>
+            </div>
+            <select 
+              className="bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-foreground outline-none"
+              value={config.routineMode || 'simple'}
+              onChange={(e) => {
+                const newMode = e.target.value;
+                const newShifts = newMode === 'simple' ? ['default'] :['morning', 'afternoon', 'night'];
+                actions.setConfig({...config, routineMode: newMode, activeShifts: newShifts});
+              }}
+            >
+              <option value="simple">{t('formatSimple')}</option>
+              <option value="shifts">{t('formatShifts')}</option>
+            </select>
+          </div>
+
+          {/* Se for modo turnos, mostra os checkboxes */}
+          {config.routineMode === 'shifts' && (
+            <div className="pt-3 border-t border-border flex flex-wrap gap-4">
+               {['morning', 'afternoon', 'night'].map(shift => (
+                 <label key={shift} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                   <input 
+                     type="checkbox" 
+                     className="accent-primary w-4 h-4 rounded border-border"
+                     checked={config.activeShifts?.includes(shift)}
+                     onChange={(e) => {
+                       let newShifts =[...(config.activeShifts || [])];
+                       if (e.target.checked) newShifts.push(shift);
+                       else newShifts = newShifts.filter(s => s !== shift);
+                       if (newShifts.length === 0) newShifts = ['morning']; // Proteção para não ficar sem turno
+                       actions.setConfig({...config, activeShifts: newShifts});
+                     }}
+                   />
+                   <span className="font-medium">{t(shift)}</span>
+                 </label>
+               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Configuração de Domingo */}
+        <SettingsItem 
+          icon={Calendar} 
+          title={t('sunday')} 
+          desc={t('sundayDesc')}
+          action={
+            <select 
+              className="bg-secondary text-secondary-foreground text-xs font-bold rounded-lg px-2 py-1 outline-none border border-border"
+              value={config.sundayMode}
+              onChange={(e) => actions.setConfig({...config, sundayMode: e.target.value})}
+            >
+              <option value="pause">{t('sundayPause')}</option>
+              <option value="random">{t('sundayRandom')}</option>
+              <optgroup label={t('fixActivity') || "Fixar Atividade"}>
+                {activitiesPool.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </optgroup>
+            </select>
+          } 
+        />
+      </div>
+
+      {/* --- SEÇÃO: APARÊNCIA & IDIOMA --- */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase ml-1">{t('appearance')}</h3>
         
@@ -78,12 +157,12 @@ const SettingsPanel = () => {
               onClick={() => actions.setConfig({...config, theme: config.theme === 'dark' ? 'light' : 'dark'})}
               className="px-3 py-1 bg-secondary text-secondary-foreground text-xs font-bold rounded-lg border border-border transition-colors hover:bg-secondary/80"
             >
-              {t('change')}
+              {t('change') || 'Alterar'}
             </button>
           } 
         />
 
-        {/* Imagem de Fundo (NOVO) */}
+        {/* Imagem de Fundo */}
         <SettingsItem 
           icon={ImageIcon} 
           title="Imagem de Fundo" 
@@ -98,31 +177,9 @@ const SettingsPanel = () => {
             />
           } 
         />
-
-        {/* Configuração de Domingo */}
-        <SettingsItem 
-          icon={Calendar} 
-          title={t('sunday')} 
-          desc={t('sundayDesc')}
-          action={
-            <select 
-              className="bg-secondary text-secondary-foreground text-xs font-bold rounded-lg px-2 py-1 outline-none border border-border"
-              value={config.sundayMode}
-              onChange={(e) => actions.setConfig({...config, sundayMode: e.target.value})}
-            >
-              <option value="pause">{t('sundayPause')}</option>
-              <option value="random">{t('sundayRandom')}</option>
-              <optgroup label={t('fixActivity') || "Fixar Atividade"}>
-                {activitiesPool.map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </optgroup>
-            </select>
-          } 
-        />
       </div>
 
-      {/* Seção: Conta & Perigo */}
+      {/* --- SEÇÃO: CONTA & PERIGO --- */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-red-400/60 uppercase ml-1">{t('account')}</h3>
         

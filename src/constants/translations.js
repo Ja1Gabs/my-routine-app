@@ -3,6 +3,9 @@ export const TRANSLATIONS = {
     // App Basics
     appTitle: "Minha Rotina",
     appSubtitle: "Organize sua semana de forma criativa",
+    weekDaysShort: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+    example: "Exemplo",
+    lastWeek: "Semana passada",
     
     // Auth & Tabs
     week: "Semana",
@@ -29,13 +32,13 @@ export const TRANSLATIONS = {
     // Stats Panel
     totalCompleted: "Total Completado",
     currentStreak: "Sequência Atual",
+    dailyStreak: "Sequência Diária",
+    weeklyStreak: "Semanas Perfeitas",
+    perfectWeeks: "Semanas Perfeitas",
+    currentWeekTracker: "Progresso da Semana",
     thisMonth: "Este Mês",
     days: "dias",
     byActivity: "Por Atividade (Total)",
-    dailyStreak: "Sequência de Dias",
-    weeklyStreak: "Semanas Seguidas",
-    currentWeekTracker: "Progresso desta Semana",
-    perfectWeeks: "Semanas Perfeitas",
 
     // History Panel
     historyTitle: "Histórico de Semanas",
@@ -51,7 +54,7 @@ export const TRANSLATIONS = {
     saveNotes: "Salvar",
     raffleTask: "Sorteado",
 
-    // Library
+    // Library & Cards
     libTitle: "Biblioteca",
     libSubtitle: "Gerencie suas cartas e regras",
     newCard: "Nova Carta",
@@ -64,11 +67,22 @@ export const TRANSLATIONS = {
     emojiPlaceholder: "Cole um emoji",
     rulesTitle: "Regras",
     frequency: "Frequência",
-    allowedDays: "Dias",
+    allowedDays: "Dias Permitidos",
     tasksTitle: "Tarefas",
     noTasks: "Sem tarefas",
     saveCard: "Salvar",
     
+    // --- FORMATO E TURNOS (SHIFTS) ---
+    routineFormat: "Formato da Rotina",
+    formatSimple: "Simples (1 por dia)",
+    formatShifts: "Turnos (Manhã, Tarde, Noite)",
+    activeShifts: "Turnos Ativos",
+    morning: "Manhã",
+    afternoon: "Tarde",
+    night: "Noite",
+    defaultShift: "Geral",
+    allowedShifts: "Turnos Permitidos",
+
     // Config & Appearance
     appearance: "Aparência",
     theme: "Tema",
@@ -79,6 +93,7 @@ export const TRANSLATIONS = {
     sundayDesc: "Modo de Domingo",
     sundayPause: "Pausa",
     sundayRandom: "Sorteio",
+    shuffle: "Embaralhar Semana",
     shuffleRoutine: "Embaralhar Rotina",
     account: "Conta",
     logout: "Sair",
@@ -88,6 +103,9 @@ export const TRANSLATIONS = {
     // App Basics
     appTitle: "My Routine",
     appSubtitle: "Organize your week creatively",
+    weekDaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    example: "Example",
+    lastWeek: "Last week",
 
     // Auth & Tabs
     week: "Week",
@@ -114,13 +132,13 @@ export const TRANSLATIONS = {
     // Stats Panel
     totalCompleted: "Total Completed",
     currentStreak: "Current Streak",
+    dailyStreak: "Daily Streak",
+    weeklyStreak: "Perfect Weeks",
+    perfectWeeks: "Perfect Weeks",
+    currentWeekTracker: "Current Week Tracker",
     thisMonth: "This Month",
     days: "days",
     byActivity: "By Activity (Total)",
-    dailyStreak: "Daily Streak",
-    weeklyStreak: "Weekly Streak",
-    currentWeekTracker: "Current Week Progress",
-    perfectWeeks: "Perfect Weeks",
 
     // History Panel
     historyTitle: "Weekly History",
@@ -136,7 +154,7 @@ export const TRANSLATIONS = {
     saveNotes: "Save",
     raffleTask: "Raffled",
 
-    // Library
+    // Library & Cards
     libTitle: "Library",
     libSubtitle: "Manage cards and rules",
     newCard: "New Card",
@@ -149,10 +167,21 @@ export const TRANSLATIONS = {
     emojiPlaceholder: "Paste emoji",
     rulesTitle: "Rules",
     frequency: "Frequency",
-    allowedDays: "Days",
+    allowedDays: "Allowed Days",
     tasksTitle: "Tasks",
     noTasks: "No tasks",
     saveCard: "Save",
+
+    // --- FORMAT AND SHIFTS ---
+    routineFormat: "Routine Format",
+    formatSimple: "Simple (1 per day)",
+    formatShifts: "Shifts (Morning, Aft, Night)",
+    activeShifts: "Active Shifts",
+    morning: "Morning",
+    afternoon: "Afternoon",
+    night: "Night",
+    defaultShift: "General",
+    allowedShifts: "Allowed Shifts",
 
     // Config & Appearance
     appearance: "Appearance",
@@ -164,6 +193,7 @@ export const TRANSLATIONS = {
     sundayDesc: "Sunday Mode",
     sundayPause: "Pause",
     sundayRandom: "Shuffle",
+    shuffle: "Shuffle Week",
     shuffleRoutine: "Shuffle Routine",
     account: "Account",
     logout: "Logout",

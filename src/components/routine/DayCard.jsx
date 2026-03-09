@@ -50,11 +50,13 @@ const DayCard = ({
   isExpanded, 
   onToggleComplete, 
   onToggleExpand, 
-  Icon 
+  Icon,
+  dateStr,     // NOVA PROP
+  shiftKey     // NOVA PROP
 }) => {
   const { actions, history, config, t } = useRoutine();
   const fileInputRef = useRef(null);
-  const [newTaskText, setNewTaskText] = useState("");
+  const[newTaskText, setNewTaskText] = useState("");
 
   // Placeholder para slots vazios
   if (!activity) {
@@ -65,39 +67,44 @@ const DayCard = ({
     );
   }
 
+  // Define chaves e temas com fallbacks seguros
   const theme = THEMES[activity.theme] || THEMES.slate;
-  const dateStr = format(date, 'yyyy-MM-dd');
-  const dayData = history[dateStr] || {};
-  const dayTasks = dayData.tasks || [];
+  const actualDateStr = dateStr || format(date, 'yyyy-MM-dd');
+  const actualShiftKey = shiftKey || 'default';
+  
+  // A CHAVE MÁGICA MATRICIAL AGORA É dateStr_shiftKey
+  const uniqueKey = `${actualDateStr}_${actualShiftKey}`;
+  const dayData = history[uniqueKey] || {};
+  const dayTasks = dayData.tasks ||[];
   const dayImage = dayData.image || null;
   const dayNotes = dayData.notes || '';
   
-  // Localização dinâmica
+  // Localização dinâmica do date-fns
   const dateLocale = config.lang === 'en' ? enUS : ptBR;
 
-  // --- HANDLERS ---
+  // --- HANDLERS COM SUPORTE A TURNOS ---
   const handleAddTask = () => {
     if (!newTaskText.trim()) return;
     const newTask = { id: crypto.randomUUID(), text: newTaskText, completed: false };
-    actions.updateDayData(dateStr, { tasks: [...dayTasks, newTask] });
+    actions.updateDayData(actualDateStr, actualShiftKey, { tasks: [...dayTasks, newTask] });
     setNewTaskText("");
   };
 
   const toggleTask = (taskId) => {
-    const updated = dayTasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
-    actions.updateDayData(dateStr, { tasks: updated });
+    const updatedTasks = dayTasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
+    actions.updateDayData(actualDateStr, actualShiftKey, { tasks: updatedTasks });
   };
 
   const deleteTask = (taskId) => {
-    const updated = dayTasks.filter(t => t.id !== taskId);
-    actions.updateDayData(dateStr, { tasks: updated });
+    const updatedTasks = dayTasks.filter(t => t.id !== taskId);
+    actions.updateDayData(actualDateStr, actualShiftKey, { tasks: updatedTasks });
   };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => actions.updateDayData(dateStr, { image: reader.result });
+      reader.onloadend = () => actions.updateDayData(actualDateStr, actualShiftKey, { image: reader.result });
       reader.readAsDataURL(file);
     }
   };
@@ -203,12 +210,12 @@ const DayCard = ({
             className="space-y-4 overflow-hidden pt-2 relative z-10"
             onClick={(e) => e.stopPropagation()} // Impede fechar o card ao interagir com o conteúdo
           >
-            {/* Imagem de Upload */}
+            {/* Imagem de Upload Preview */}
             {dayImage && (
-              <div className="relative rounded-lg overflow-hidden border border-border group aspect-video">
+              <div className="relative rounded-lg overflow-hidden border border-border group aspect-video shadow-sm">
                 <img src={dayImage} className="w-full h-full object-cover" alt="Upload" />
                 <button 
-                  onClick={() => actions.updateDayData(dateStr, { image: null })}
+                  onClick={() => actions.updateDayData(actualDateStr, actualShiftKey, { image: null })}
                   className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
                 >
                   <Trash2 size={14} />
@@ -216,7 +223,7 @@ const DayCard = ({
               </div>
             )}
 
-            {/* Missão do Dia */}
+            {/* Missão do Dia Sorteada */}
             {activity.assignedTask && (
               <div className="p-3 bg-secondary/50 border border-border rounded-lg">
                 <span className="text-muted-foreground font-black uppercase text-[9px] block mb-1 tracking-widest">
@@ -227,7 +234,7 @@ const DayCard = ({
             )}
 
             {/* Checklist */}
-            <div className="space-y-3">
+            <div className="space-y-3 bg-secondary/20 p-3 border border-border/50 rounded-lg">
               <div className="flex justify-between items-center">
                 <label className="text-[10px] uppercase text-muted-foreground font-black tracking-widest">Checklist</label>
                 <span className="text-[10px] text-muted-foreground font-bold">{completedCount}/{dayTasks.length}</span>
@@ -267,14 +274,14 @@ const DayCard = ({
               </div>
             </div>
 
-            {/* Notas */}
+            {/* Notas / Diário */}
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase text-muted-foreground font-black tracking-widest block">
                 {t('notes') || 'Anotações'}
               </label>
               <textarea 
                 value={dayNotes}
-                onChange={(e) => actions.updateDayData(dateStr, { notes: e.target.value })}
+                onChange={(e) => actions.updateDayData(actualDateStr, actualShiftKey, { notes: e.target.value })}
                 placeholder={t('notePlaceholder')} 
                 className={`w-full h-24 rounded-lg p-3 text-xs outline-none resize-none transition-colors leading-relaxed ${theme.input}`} 
               />

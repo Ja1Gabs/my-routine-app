@@ -3,19 +3,21 @@ import { Palette, Plus, Trash2, Edit2, Save, X, List, CalendarClock, AlertCircle
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
 
-const DAYS_OF_WEEK = [
+const DAYS_OF_WEEK =[
   { label: 'Seg', value: 0 }, { label: 'Ter', value: 1 }, { label: 'Qua', value: 2 },
   { label: 'Qui', value: 3 }, { label: 'Sex', value: 4 }, { label: 'Sáb', value: 5 }, { label: 'Dom', value: 6 },
 ];
 
 const ActivityEditor = ({ initialData, onSave, onCancel }) => {
-  const { t } = useRoutine();
+  // ADICIONADO: Extraímos o 'config' do hook para poder verificar o routineMode
+  const { t, config } = useRoutine(); 
+  
   const [data, setData] = useState(initialData || { 
     name: '', iconName: 'Rocket', emoji: '', theme: 'blue', defaultTasks: [],
-    rules: { frequency: 1, allowedDays: [0, 1, 2, 3, 4, 5, 6] }
+    rules: { frequency: 1, allowedDays:[0, 1, 2, 3, 4, 5, 6], allowedShifts:['morning', 'afternoon', 'night'] }
   });
   const [newTask, setNewTask] = useState('');
-  const [iconType, setIconType] = useState(initialData?.emoji ? 'emoji' : 'icon');
+  const[iconType, setIconType] = useState(initialData?.emoji ? 'emoji' : 'icon');
 
   const addTask = () => {
     if (newTask.trim()) {
@@ -29,10 +31,10 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
   };
 
   const toggleDay = (dayIndex) => {
-    const currentDays = data.rules?.allowedDays || [0,1,2,3,4,5,6];
+    const currentDays = data.rules?.allowedDays ||[0,1,2,3,4,5,6];
     let newDays = currentDays.includes(dayIndex) 
       ? currentDays.filter(d => d !== dayIndex) 
-      : [...currentDays, dayIndex];
+      :[...currentDays, dayIndex];
     setData(prev => ({ ...prev, rules: { ...prev.rules, allowedDays: newDays } }));
   };
 
@@ -114,6 +116,31 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
             ))}
           </div>
         </div>
+
+        {/* Turnos Permitidos (Só mostra se tiver em modo turnos) */}
+        {config?.routineMode === 'shifts' && (
+          <div>
+            <label className="text-xs text-foreground/80 block mt-3 mb-2">{t('allowedShifts')}:</label>
+            <div className="flex gap-2">
+              {['morning', 'afternoon', 'night'].map((shift) => {
+                const isSelected = !data.rules?.allowedShifts || data.rules.allowedShifts.includes(shift);
+                return (
+                  <button
+                    key={shift}
+                    onClick={() => {
+                      const current = data.rules?.allowedShifts || ['morning','afternoon','night'];
+                      const newShifts = current.includes(shift) ? current.filter(s => s !== shift) : [...current, shift];
+                      setData(prev => ({ ...prev, rules: { ...prev.rules, allowedShifts: newShifts } }));
+                    }}
+                    className={`py-1.5 px-3 rounded flex-1 text-[10px] font-bold transition-all ${isSelected ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-secondary text-muted-foreground hover:bg-border'}`}
+                  >
+                    {t(shift)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tarefas */}
@@ -141,7 +168,7 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
 
 const LibraryPanel = () => {
   const { activitiesPool, actions, t } = useRoutine();
-  const [editingId, setEditingId] = useState(null);
+  const[editingId, setEditingId] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
 
   return (

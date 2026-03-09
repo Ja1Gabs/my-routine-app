@@ -18,16 +18,18 @@ export const RoutineProvider = ({ children }) => {
   
   // Estado da Aplicação
   const [activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
-  const [currentWeek, setCurrentWeek] = useState([]);
-  const [history, setHistory] = useState({});
+  const [currentWeek, setCurrentWeek] = useState([]); // Matriz: [{ morning: act, ... }, ...]
+  const [history, setHistory] = useState({});         // Chaves: "YYYY-MM-DD_shift"
   const [goals, setGoals] = useState([]);
   
-  // Configurações
+  // Configurações unificadas
   const [config, setConfig] = useState({ 
     theme: 'dark', 
     sundayMode: 'pause', 
     lang: 'pt',
-    backgroundImage: '' 
+    backgroundImage: '',
+    routineMode: 'simple', // 'simple' | 'shifts'
+    activeShifts: ['default'] 
   });
 
   const isFirstLoad = useRef(true);
@@ -44,7 +46,7 @@ export const RoutineProvider = ({ children }) => {
     root.classList.add(config.theme === 'dark' ? 'dark' : 'light');
   }, [config.theme]);
 
-  // --- 1. CARREGAR DADOS (LOGIN OU SYNC) ---
+  // --- 1. CARREGAR DADOS (CLOUD OU LOCAL) ---
   useEffect(() => {
     const init = async () => {
       const cachedUser = localStorage.getItem('user_data');
@@ -76,11 +78,12 @@ export const RoutineProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Erro ao sincronizar nuvem:", error);
+      loadLocalData();
     }
   };
 
   const loadLocalData = () => {
-    const data = JSON.parse(localStorage.getItem('routine_db_offline') || '{}');
+    const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
     if (data.activities) setActivitiesPool(data.activities);
     if (data.currentWeek) setCurrentWeek(data.currentWeek);
     if (data.history) setHistory(data.history);
@@ -93,7 +96,7 @@ export const RoutineProvider = ({ children }) => {
     if (isFirstLoad.current) return;
 
     const dataToSave = { activities: activitiesPool, currentWeek, history, goals, config };
-    localStorage.setItem('routine_db_offline', JSON.stringify(dataToSave));
+    localStorage.setItem('routine_db_v10', JSON.stringify(dataToSave));
 
     if (token) {
       const timer = setTimeout(() => {
@@ -154,59 +157,42 @@ export const RoutineProvider = ({ children }) => {
     window.location.reload();
   };
 
-  // --- CALCULADORA DE SEQUÊNCIAS (STREAKS) ---
+  // --- STATS ENGINE (Suporta Turnos) ---
   const stats = useMemo(() => {
     const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
-    const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
+    const activeShifts = config.routineMode === 'shifts' ? config.activeShifts : ['default'];
 
-    // 1. SEQUÊNCIA DIÁRIA
+    const isDayCompleted = (date) => {
+      const dStr = format(date, 'yyyy-MM-dd');
+      return activeShifts.every(s => history[`${dStr}_${s}`]?.completed);
+    };
+
+    // 1. Sequência Diária
     let daily = 0;
-    let dDate = today;
-
-    // Se hoje ou ontem foram feitos, a sequência continua
-    const hasToday = history[todayStr]?.completed;
-    const hasYesterday = history[yesterdayStr]?.completed;
-
-    if (hasToday || hasYesterday) {
-      // Se não fez hoje, mas fez ontem, começa a contar de ontem
-      if (!hasToday) dDate = subDays(today, 1);
-      
-      while (true) {
-        const dateStr = format(dDate, 'yyyy-MM-dd');
-        if (history[dateStr]?.completed) {
-          daily++;
-          dDate = subDays(dDate, 1);
-        } else {
-          break;
-        }
+    if (isDayCompleted(today) || isDayCompleted(subDays(today, 1))) {
+      let checkDate = isDayCompleted(today) ? today : subDays(today, 1);
+      while (isDayCompleted(checkDate)) {
+        daily++;
+        checkDate = subDays(checkDate, 1);
       }
     }
 
-    // 2. SEQUÊNCIA SEMANAL (Semanas Perfeitas)
+    // 2. Semanas Perfeitas
     let weekly = 0;
     let wStart = startOfWeek(today, { weekStartsOn: 1 });
-
-    // Checa a semana atual (só conta se for perfeita E já passou)
-    // Para simplificar: checa se todas as semanas passadas foram perfeitas
-    let checkStart = wStart;
     
-    // Opcional: Se quiser que a semana atual some no contador assim que fechar o 7º dia:
-    const isWeekPerfect = (start) => {
+    const checkWeek = (start) => {
       for (let i = 0; i < 7; i++) {
-        if (!history[format(addDays(start, i), 'yyyy-MM-dd')]?.completed) return false;
+        if (!isDayCompleted(addDays(start, i))) return false;
       }
       return true;
     };
 
-    if (isWeekPerfect(checkStart)) weekly++;
-
-    // Verifica semanas anteriores
-    checkStart = subDays(checkStart, 7);
+    let currentW = wStart;
     while (true) {
-      if (isWeekPerfect(checkStart)) {
+      if (checkWeek(currentW)) {
         weekly++;
-        checkStart = subDays(checkStart, 7);
+        currentW = subDays(currentW, 7);
       } else {
         break;
       }
@@ -217,94 +203,100 @@ export const RoutineProvider = ({ children }) => {
       weeklyStreak: weekly,
       totalCompleted: Object.values(history).filter(h => h.completed).length
     };
-  }, [history]);
+  }, [history, config.activeShifts, config.routineMode]);
 
   // --- APP ACTIONS ---
-  const updateDayData = (dateStr, newData) => {
+  const updateDayData = (dateStr, shiftKey, newData) => {
+    const key = `${dateStr}_${shiftKey}`;
     setHistory(prev => ({
       ...prev,
-      [dateStr]: { ...prev[dateStr], ...newData, lastUpdated: new Date().toISOString() }
+      [key]: { ...prev[key], ...newData, lastUpdated: new Date().toISOString() }
     }));
   };
 
-  const toggleComplete = (dateStr) => {
-    setHistory(prev => {
-      const current = prev[dateStr] || {};
-      return {
-        ...prev,
-        [dateStr]: { ...current, completed: !current.completed, lastUpdated: new Date().toISOString() }
-      };
-    });
+  const toggleComplete = (dateStr, shiftKey) => {
+    const key = `${dateStr}_${shiftKey}`;
+    setHistory(prev => ({
+      ...prev,
+      [key]: { ...prev[key], completed: !prev[key]?.completed, lastUpdated: new Date().toISOString() }
+    }));
   };
 
   const saveActivity = (activity) => {
-    if (activity.id) {
-      setActivitiesPool(prev => prev.map(a => a.id === activity.id ? activity : a));
-    } else {
-      setActivitiesPool(prev => [...prev, { ...activity, id: crypto.randomUUID() }]);
-    }
+    if (activity.id) setActivitiesPool(prev => prev.map(a => a.id === activity.id ? activity : a));
+    else setActivitiesPool(prev => [...prev, { ...activity, id: crypto.randomUUID() }]);
   };
   
-  const deleteActivity = (id) => {
-    setActivitiesPool(prev => prev.filter(a => a.id !== id));
-  };
+  const deleteActivity = (id) => setActivitiesPool(prev => prev.filter(a => a.id !== id));
 
+  // SHUFFLE MATRICIAL
   const shuffleWeek = (poolOverride = null) => {
     const pool = (Array.isArray(poolOverride) && poolOverride.length > 0) ? poolOverride : [...activitiesPool];
-    if (!pool || pool.length === 0) {
-        setCurrentWeek(new Array(7).fill(null));
-        return;
-    }
+    const targetShifts = config.routineMode === 'shifts' ? config.activeShifts : ['default'];
 
-    let weekPlan = new Array(7).fill(null); 
-    
+    let weekPlan = Array.from({ length: 7 }, () => {
+      let dayObj = {};
+      targetShifts.forEach(s => dayObj[s] = null);
+      return dayObj;
+    });
+
+    // Domingo
     if (config.sundayMode === 'pause') {
-      weekPlan[6] = FIXED_SUNDAY;
+      targetShifts.forEach(s => weekPlan[6][s] = FIXED_SUNDAY);
     } else if (config.sundayMode !== 'random') {
       const fixedAct = pool.find(a => a.id === config.sundayMode);
-      if (fixedAct) weekPlan[6] = { ...fixedAct, assignedTask: '', fixed: true };
+      if (fixedAct) targetShifts.forEach(s => weekPlan[6][s] = { ...fixedAct, fixed: true });
     }
 
+    // Deck & Distribuição
     let deck = [];
     pool.forEach(act => {
       const freq = act.rules?.frequency || 1;
-      for(let i = 0; i < freq; i++) deck.push({ ...act });
+      for (let i = 0; i < freq; i++) deck.push({ ...act });
     });
-
     deck = deck.sort(() => Math.random() - 0.5);
 
     for (let card of deck) {
-      const allowedDays = card.rules?.allowedDays || [0,1,2,3,4,5,6];
-      const validEmptySlots = weekPlan.map((slot, index) => slot === null && allowedDays.includes(index) ? index : -1).filter(index => index !== -1);
+      const allowedDays = card.rules?.allowedDays || [0, 1, 2, 3, 4, 5, 6];
+      const allowedShifts = card.rules?.allowedShifts || targetShifts;
+      let placed = false;
 
-      if (validEmptySlots.length > 0) {
-        const randomDayIndex = validEmptySlots[Math.floor(Math.random() * validEmptySlots.length)];
-        const randomTask = card.defaultTasks?.length > 0 
-            ? card.defaultTasks[Math.floor(Math.random() * card.defaultTasks.length)] : '';
-        weekPlan[randomDayIndex] = { ...card, assignedTask: randomTask };
+      for (let dIdx of allowedDays.sort(() => Math.random() - 0.5)) {
+        if (dIdx > 6) continue;
+        for (let sKey of allowedShifts.sort(() => Math.random() - 0.5)) {
+          if (targetShifts.includes(sKey) && weekPlan[dIdx][sKey] === null) {
+            const tasks = card.defaultTasks || [];
+            const randomTask = tasks.length > 0 ? tasks[Math.floor(Math.random() * tasks.length)] : '';
+            weekPlan[dIdx][sKey] = { ...card, assignedTask: randomTask };
+            placed = true;
+            break;
+          }
+        }
+        if (placed) break;
       }
     }
 
-    // Preenchimento de segurança para dias vazios
+    // Fill Gaps
     for (let i = 0; i < 7; i++) {
-      if (weekPlan[i] === null) {
-        const validCandidates = pool.filter(a => !a.rules?.allowedDays || a.rules.allowedDays.includes(i));
-        const fillerPool = validCandidates.length > 0 ? validCandidates : pool;
-        const filler = fillerPool[Math.floor(Math.random() * fillerPool.length)];
-        if (filler) {
-             const randomTask = filler.defaultTasks?.length > 0 ? filler.defaultTasks[Math.floor(Math.random() * filler.defaultTasks.length)] : '';
-            weekPlan[i] = { ...filler, assignedTask: randomTask };
-        } else {
-            weekPlan[i] = FIXED_SUNDAY;
+      for (let s of targetShifts) {
+        if (weekPlan[i][s] === null) {
+          const valid = pool.filter(a => 
+            (!a.rules?.allowedDays || a.rules.allowedDays.includes(i)) &&
+            (!a.rules?.allowedShifts || a.rules.allowedShifts.includes(s))
+          );
+          const filler = (valid.length > 0 ? valid : pool)[Math.floor(Math.random() * (valid.length || pool.length))];
+          if (filler) {
+            weekPlan[i][s] = { ...filler, assignedTask: filler.defaultTasks?.[0] || '' };
+          } else {
+            weekPlan[i][s] = FIXED_SUNDAY;
+          }
         }
       }
     }
     setCurrentWeek(weekPlan);
   };
 
-  const addGoal = (goal) => {
-    setGoals(prev => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
-  };
+  const addGoal = (goal) => setGoals(prev => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
 
   return (
     <RoutineContext.Provider value={{
