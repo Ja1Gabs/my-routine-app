@@ -33,7 +33,7 @@ const SHIFT_ICONS = {
 const TaskItem = ({ task, onToggle, onDelete }) => (
   <div 
     className="flex items-center gap-3 group bg-black/20 p-2 rounded-lg border border-white/5 hover:border-white/20 transition-colors" 
-    onClick={(e) => e.stopPropagation()} // Impede que clicar na task feche o card
+    onClick={(e) => e.stopPropagation()} 
   >
     <button 
       onClick={onToggle}
@@ -101,7 +101,7 @@ const DayCard = ({
 
   const dateLocale = config.lang === 'en' ? enUS : ptBR;
 
-  // --- HANDLERS (Usando a chave dupla dateStr + shiftKey) ---
+  // --- HANDLERS ---
   const handleAddTask = () => {
     if (!newTaskText.trim()) return;
     const newTask = { id: crypto.randomUUID(), text: newTaskText, completed: false };
@@ -157,14 +157,12 @@ const DayCard = ({
         </div>
         
         <div className="flex flex-col items-end gap-1">
-          {/* Mostra o Dia da semana se não estiver no modo Turnos (onde a coluna já diz o dia) */}
           {config.routineMode !== 'shifts' && (
              <div className="text-[9px] font-bold text-white/70 uppercase tracking-widest backdrop-blur-sm bg-black/30 px-2 py-0.5 rounded-md border border-white/5">
                {format(date, 'EEEE', { locale: dateLocale })}
              </div>
           )}
 
-          {/* Badge do Turno (Glassmorphism) */}
           {shiftLabel && (
             <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 px-2 py-1 rounded-md backdrop-blur-sm">
               {SHIFT_ICONS[shiftLabel] || SHIFT_ICONS[shiftKey]}
@@ -190,7 +188,6 @@ const DayCard = ({
 
       {/* FOOTER ACTIONS (Botões de Concluir, Expandir e Foto) */}
       <div className={`flex gap-2 mt-auto pt-3 relative z-10 ${isExpanded ? 'mb-4 border-b border-white/10 pb-4' : ''}`}>
-        
         <button
           onClick={(e) => { e.stopPropagation(); onToggleComplete(); }}
           className={`flex-1 h-10 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95
@@ -226,91 +223,103 @@ const DayCard = ({
       {/* ========================================= */}
       {/* ÁREA EXPANDIDA (Detalhes, Tasks e Notas)  */}
       {/* ========================================= */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-4 overflow-hidden relative z-10"
+            key="content"
+            initial="collapsed"
+            animate="open"
+            exit="collapsed"
+            variants={{
+              open: { opacity: 1, height: "auto" },
+              collapsed: { opacity: 0, height: 0 }
+            }}
+            transition={{ duration: 0.3, ease:[0.04, 0.62, 0.23, 0.98] }} // Easing perfeito e fluido
+            className="overflow-hidden relative z-10"
             onClick={(e) => e.stopPropagation()} // Clicar aqui dentro NÃO fechará o card
           >
-            
-            {/* 1. Imagem Adicionada (Preview Grande) */}
-            {dayImage && (
-              <div className="relative rounded-xl overflow-hidden border border-white/10 group shadow-md">
-                <img src={dayImage} className="w-full h-40 object-cover" alt="Upload" />
-                <button 
-                  onClick={() => actions.updateDayData(actualDateStr, actualShiftKey, { image: null })}
-                  className="absolute top-2 right-2 bg-black/80 text-red-400 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            )}
-
-            {/* 2. Missão Sorteada */}
-            {activity.assignedTask && (
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl">
-                <div className="flex items-center gap-2 text-[10px] text-primary font-bold uppercase mb-1">
-                  <Rocket size={12} /> {t('raffleTask') || 'Missão do Dia'}
-                </div>
-                <div className="text-sm text-foreground font-medium">{activity.assignedTask}</div>
-              </div>
-            )}
-
-            {/* 3. Checklist / Subtarefas */}
-            <div className="bg-black/20 p-3 rounded-xl border border-white/5">
-              <div className="flex justify-between items-center mb-3">
-                <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest">{t('tasksTitle') || 'Subtarefas'}</label>
-                <span className="text-[10px] text-white/40 font-bold">{completedCount}/{dayTasks.length}</span>
-              </div>
+            {/* O SEGREDO: Wrapper para isolar o padding da animação de altura */}
+            <div className="pt-4 space-y-4 pb-2">
               
-              <div className="space-y-2 mb-3 max-h-48 overflow-y-auto no-scrollbar">
-                {dayTasks.map(task => (
-                  <TaskItem key={task.id} task={task} onToggle={() => toggleTask(task.id)} onDelete={() => deleteTask(task.id)} />
-                ))}
-                {dayTasks.length === 0 && (
-                  <p className="text-[10px] text-white/20 italic text-center py-2">{t('noTasks') || 'Nenhuma tarefa'}</p>
-                )}
+              {/* 1. Imagem Adicionada (Preview Grande) */}
+              {dayImage && (
+                <div className="relative rounded-xl overflow-hidden border border-white/10 group shadow-md">
+                  <img src={dayImage} className="w-full h-40 object-cover" alt="Upload" />
+                  <button 
+                    onClick={() => actions.updateDayData(actualDateStr, actualShiftKey, { image: null })}
+                    className="absolute top-2 right-2 bg-black/80 text-red-400 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* 2. Missão Sorteada */}
+              {activity.assignedTask && (
+                <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                  <div className="flex items-center gap-2 text-[10px] text-primary font-bold uppercase mb-1">
+                    <Rocket size={12} /> {t('raffleTask') || 'Missão do Dia'}
+                  </div>
+                  <div className="text-sm text-foreground font-medium">{activity.assignedTask}</div>
+                </div>
+              )}
+
+              {/* 3. Checklist / Subtarefas */}
+              <div className="bg-black/20 p-3 rounded-xl border border-white/5">
+                <div className="flex justify-between items-center mb-3">
+                  <label className="text-[10px] uppercase text-white/40 font-bold tracking-widest">
+                    {t('tasksTitle') || 'Subtarefas'}
+                  </label>
+                  <span className="text-[10px] text-white/40 font-bold">{completedCount}/{dayTasks.length}</span>
+                </div>
+                
+                <div className="space-y-2 mb-3 max-h-48 overflow-y-auto no-scrollbar">
+                  {dayTasks.map(task => (
+                    <TaskItem key={task.id} task={task} onToggle={() => toggleTask(task.id)} onDelete={() => deleteTask(task.id)} />
+                  ))}
+                  {dayTasks.length === 0 && (
+                    <p className="text-[10px] text-white/20 italic text-center py-2">{t('noTasks') || 'Nenhuma tarefa'}</p>
+                  )}
+                </div>
+
+                {/* Input de Nova Tarefa */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder={t('taskPlaceholder')}
+                    className="w-full h-9 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white outline-none focus:border-white/30 transition-colors placeholder:text-white/20" 
+                    value={newTaskText}
+                    onChange={(e) => setNewTaskText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                  />
+                  <button onClick={handleAddTask} className="w-9 h-9 shrink-0 bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center justify-center transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
 
-              {/* Input de Nova Tarefa */}
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder={t('taskPlaceholder')}
-                  className="w-full h-9 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white outline-none focus:border-white/30 transition-colors placeholder:text-white/20" 
-                  value={newTaskText}
-                  onChange={(e) => setNewTaskText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+              {/* 4. Bloco de Notas */}
+              <div>
+                <label className="text-[10px] uppercase text-white/40 font-bold mb-1 block tracking-widest">
+                  {t('notes') || 'Anotações'}
+                </label>
+                <textarea 
+                  placeholder={t('notePlaceholder')} 
+                  className="w-full h-24 bg-black/20 border border-white/10 rounded-xl p-3 text-xs text-white outline-none resize-none focus:border-white/30 transition-colors placeholder:text-white/20 leading-relaxed"
+                  value={dayNotes}
+                  onChange={(e) => actions.updateDayData(actualDateStr, actualShiftKey, { notes: e.target.value })}
                 />
-                <button onClick={handleAddTask} className="w-9 h-9 shrink-0 bg-white/10 hover:bg-white/20 text-white rounded-lg flex items-center justify-center transition-colors">
-                  <Plus size={14} />
-                </button>
               </div>
+
+              {/* 5. Botão Fechar Inferior */}
+              <button 
+                onClick={onToggleExpand}
+                className={`w-full h-10 mt-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/5 active:scale-95 transition-all`}
+              >
+                <Save size={14} /> {t('saveAndClose') || 'Fechar Aba'}
+              </button>
+
             </div>
-
-            {/* 4. Bloco de Notas */}
-            <div>
-              <label className="text-[10px] uppercase text-white/40 font-bold mb-1 block tracking-widest">{t('notes') || 'Anotações'}</label>
-              <textarea 
-                placeholder={t('notePlaceholder')} 
-                className="w-full h-24 bg-black/20 border border-white/10 rounded-xl p-3 text-xs text-white outline-none resize-none focus:border-white/30 transition-colors placeholder:text-white/20 leading-relaxed"
-                value={dayNotes}
-                onChange={(e) => actions.updateDayData(actualDateStr, actualShiftKey, { notes: e.target.value })}
-              />
-            </div>
-
-            {/* 5. Botão Fechar Inferior */}
-            <button 
-              onClick={onToggleExpand}
-              className={`w-full h-10 mt-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/5 active:scale-95 transition-all`}
-            >
-              <Save size={14} /> {t('saveAndClose') || 'Fechar Aba'}
-            </button>
-
           </motion.div>
         )}
       </AnimatePresence>

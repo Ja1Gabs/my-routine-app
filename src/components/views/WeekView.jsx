@@ -66,7 +66,7 @@ const WeekView = () => {
         LAYOUT: Carrossel Horizontal
         Resolve o problema dos cards achatados. Os dias viram colunas roláveis no eixo X.
       */}
-      <div className="flex overflow-x-auto pb-10 pt-4 snap-x snap-mandatory gap-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent px-4 md:px-0">
+      <div className="flex overflow-x-auto pb-10 pt-4 snap-x snap-mandatory gap-6">
         
         {Array.from({ length: 7 }).map((_, index) => {
           const dayData = currentWeek[index] || {}; // Puxa da matriz com fallback de segurança
