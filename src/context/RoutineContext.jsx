@@ -36,7 +36,6 @@ export const RoutineProvider = ({ children }) => {
 
     try {
       const stored = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
-      const themeOverride = localStorage.getItem('routine_theme');
       
       // Start with defaults and merge saved config (except theme)
       const cfg = { ...defaultCfg };
@@ -45,21 +44,17 @@ export const RoutineProvider = ({ children }) => {
         Object.assign(cfg, otherConfig);
       }
       
-      // Apply theme: explicit save > default
-      if (themeOverride && (themeOverride === 'light' || themeOverride === 'dark')) {
-        cfg.theme = themeOverride;
-      } else {
-        cfg.theme = 'light';
-        localStorage.setItem('routine_theme', 'light');
-      }
+      // ALWAYS force light on initial load - ignore stored theme preference
+      cfg.theme = 'light';
+      localStorage.setItem('routine_theme', 'light');
       
-      console.log('🔄 Initial config loaded - Theme:', cfg.theme);
+      console.log('🔄 Initial config loaded - Theme: LIGHT (forced)');
       
       // Apply class to html immediately
       if (typeof window !== 'undefined') {
         const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
-        root.classList.add(cfg.theme === 'dark' ? 'dark' : 'light');
+        root.classList.add('light');
       }
       
       return cfg;
