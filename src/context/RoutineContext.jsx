@@ -86,23 +86,21 @@ export const RoutineProvider = ({ children }) => {
   // Ensure theme class is always correct on html element
   useEffect(() => {
     const root = window.document.documentElement;
-    const isDark = config.theme === 'dark';
     
-    // Remove both classes first
-    root.classList.remove('light', 'dark');
+    // FORCE light mode - remove dark, add light, set inline styles
+    root.classList.remove('dark');
+    root.classList.add('light');
     
-    // Add the correct one
-    root.classList.add(isDark ? 'dark' : 'light');
+    // Override with inline styles to ensure it applies
+    root.style.backgroundColor = 'white';
+    root.style.color = 'black';
     
-    // Also apply inline to ensure override
-    if (isDark) {
-      root.style.removeProperty('background-color');
-    } else {
-      root.style.backgroundColor = 'var(--background)';
-    }
+    // Also force body
+    document.body.style.backgroundColor = 'white';
+    document.body.style.color = 'black';
     
-    console.log('🎨 Theme applied:', isDark ? 'DARK' : 'LIGHT', '- html class:', root.className);
-  }, [config.theme]);
+    console.log('🎨 FORCING LIGHT MODE - html class:', root.className);
+  }, []);
 
   // --- 1. CARREGAR DADOS (CLOUD OU LOCAL) ---
   useEffect(() => {
@@ -137,6 +135,14 @@ export const RoutineProvider = ({ children }) => {
             setConfig(prev => ({ ...prev, ...data.config, theme }));
           }
         }
+        // Reapply light theme after data loads
+        const root = window.document.documentElement;
+        root.classList.remove('dark');
+        root.classList.add('light');
+        root.style.backgroundColor = 'white';
+        root.style.color = 'black';
+        document.body.style.backgroundColor = 'white';
+        document.body.style.color = 'black';
       }
     } catch (error) {
       console.error("Erro ao sincronizar nuvem:", error);
@@ -155,6 +161,16 @@ export const RoutineProvider = ({ children }) => {
       const { theme, ...otherConfig } = data.config;
       setConfig(prev => ({ ...prev, ...otherConfig }));
     }
+    // Reapply light theme after data loads
+    setTimeout(() => {
+      const root = window.document.documentElement;
+      root.classList.remove('dark');
+      root.classList.add('light');
+      root.style.backgroundColor = 'white';
+      root.style.color = 'black';
+      document.body.style.backgroundColor = 'white';
+      document.body.style.color = 'black';
+    }, 0);
   };
 
   // --- 2. SALVAR DADOS (AUTO-SYNC COM DEBOUNCE) ---
