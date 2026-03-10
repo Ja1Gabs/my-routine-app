@@ -4,11 +4,10 @@ import App from './App.jsx'
 import './index.css'
 import { RoutineProvider } from './context/RoutineContext.jsx' // Importe o Provider
 
-// Force light mode BEFORE React renders to prevent dark flash
-document.documentElement.classList.remove('dark');
-document.documentElement.classList.add('light');
-document.documentElement.style.backgroundColor = 'white';
-document.documentElement.style.color = 'black';
+// Only ensure light class exists before React renders (no inline styles)
+if (!document.documentElement.classList.contains('light')) {
+  document.documentElement.classList.add('light');
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

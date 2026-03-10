@@ -83,24 +83,17 @@ export const RoutineProvider = ({ children }) => {
     return TRANSLATIONS[lang][key] || key;
   };
 
-  // Ensure theme class is always correct on html element
+  // Sync theme class with config.theme state
   useEffect(() => {
     const root = window.document.documentElement;
+    const isDark = config.theme === 'dark';
     
-    // FORCE light mode - remove dark, add light, set inline styles
-    root.classList.remove('dark');
-    root.classList.add('light');
+    // Remove both, add the correct one
+    root.classList.remove('light', 'dark');
+    root.classList.add(isDark ? 'dark' : 'light');
     
-    // Override with inline styles to ensure it applies
-    root.style.backgroundColor = 'white';
-    root.style.color = 'black';
-    
-    // Also force body
-    document.body.style.backgroundColor = 'white';
-    document.body.style.color = 'black';
-    
-    console.log('🎨 FORCING LIGHT MODE - html class:', root.className);
-  }, []);
+    console.log('🎨 Theme:', isDark ? 'DARK' : 'LIGHT');
+  }, [config.theme]);
 
   // --- 1. CARREGAR DADOS (CLOUD OU LOCAL) ---
   useEffect(() => {
@@ -130,19 +123,11 @@ export const RoutineProvider = ({ children }) => {
           if (data.history) setHistory(data.history);
           if (data.goals) setGoals(data.goals);
           if (data.config) {
-            // never override the already-loaded theme (which may come from localStorage or user interaction)
+            // never override the already-loaded theme
             const theme = config.theme;
             setConfig(prev => ({ ...prev, ...data.config, theme }));
           }
         }
-        // Reapply light theme after data loads
-        const root = window.document.documentElement;
-        root.classList.remove('dark');
-        root.classList.add('light');
-        root.style.backgroundColor = 'white';
-        root.style.color = 'black';
-        document.body.style.backgroundColor = 'white';
-        document.body.style.color = 'black';
       }
     } catch (error) {
       console.error("Erro ao sincronizar nuvem:", error);
@@ -157,20 +142,10 @@ export const RoutineProvider = ({ children }) => {
     if (data.history) setHistory(data.history);
     if (data.goals) setGoals(data.goals);
     if (data.config) {
-      // Don't let stored config override the theme - it's controlled separately
+      // Don't let stored config override the theme
       const { theme, ...otherConfig } = data.config;
       setConfig(prev => ({ ...prev, ...otherConfig }));
     }
-    // Reapply light theme after data loads
-    setTimeout(() => {
-      const root = window.document.documentElement;
-      root.classList.remove('dark');
-      root.classList.add('light');
-      root.style.backgroundColor = 'white';
-      root.style.color = 'black';
-      document.body.style.backgroundColor = 'white';
-      document.body.style.color = 'black';
-    }, 0);
   };
 
   // --- 2. SALVAR DADOS (AUTO-SYNC COM DEBOUNCE) ---
