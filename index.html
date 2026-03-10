@@ -4,7 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my-routine-app</title>
+    <title>Minha Rotina</title>
+    
+    <!-- ANTI-FLASH SCRIPT: Apply theme BEFORE React renders -->
+    <script>
+      (function() {
+        try {
+          const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
+          const theme = data.config?.theme || 'dark';
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(theme);
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -22,10 +22,20 @@ export const RoutineProvider = ({ children }) => {
   const [history, setHistory] = useState({});         // Chaves: "YYYY-MM-DD_shift"
   const [goals, setGoals] = useState([]);
   
-  // Configurações unificadas
-  // attempt to load stored configuration immediately to avoid theme flash
-  const getInitialConfig = () => {
-    const defaultCfg = {
+  // Initialize config from localStorage synchronously before rendering
+  const [config, setConfig] = useState(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
+      if (data.config) {
+        // Return whatever was saved
+        return data.config;
+      }
+    } catch (e) {
+      console.error('Erro ao carregar config inicial', e);
+    }
+    
+    // First-time default
+    return {
       theme: 'dark',
       sundayMode: 'pause',
       lang: 'pt',
@@ -33,51 +43,7 @@ export const RoutineProvider = ({ children }) => {
       routineMode: 'simple',
       activeShifts: ['default'],
     };
-
-    try {
-      const stored = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
-      const savedTheme = localStorage.getItem('routine_theme');
-      
-      // Start with defaults and merge saved config (except theme)
-      const cfg = { ...defaultCfg };
-      if (stored.config) {
-        const { theme, ...otherConfig } = stored.config;
-        Object.assign(cfg, otherConfig);
-      }
-      
-      // Respect saved theme preference, or default to dark
-      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
-        cfg.theme = savedTheme;
-      } else {
-        cfg.theme = 'dark';
-        localStorage.setItem('routine_theme', 'dark');
-      }
-      
-      console.log('🔄 Initial config loaded - Theme:', cfg.theme);
-      
-      // Apply class to html immediately
-      if (typeof window !== 'undefined') {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(cfg.theme === 'dark' ? 'dark' : 'light');
-      }
-      
-      return cfg;
-    } catch (e) {
-      console.warn('❌ Failed reading config from storage:', e);
-      
-      // Fallback: ensure html gets the default dark class
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('routine_theme', 'dark');
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add('dark');
-      }
-      return defaultCfg;
-    }
-  };
-
-  const [config, setConfig] = useState(getInitialConfig);
+  });
 
 
   const isFirstLoad = useRef(true);
@@ -154,16 +120,12 @@ export const RoutineProvider = ({ children }) => {
   };
 
   // --- 2. SALVAR DADOS (AUTO-SYNC COM DEBOUNCE) ---
-  // persist changes immediately; also keep theme in its own key so toggling is instant
   useEffect(() => {
     if (isFirstLoad.current) return;
 
     const existing = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
     const dataToSave = { activities: activitiesPool, currentWeek, history, goals, config };
     localStorage.setItem('routine_db_v10', JSON.stringify({ ...existing, ...dataToSave }));
-
-    // also stash theme separately to avoid latency on initial load
-    localStorage.setItem('routine_theme', config.theme);
 
     if (token) {
       const timer = setTimeout(() => {
