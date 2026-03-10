@@ -25,32 +25,6 @@ export const RoutineProvider = ({ children }) => {
   // Configurações unificadas
   // attempt to load stored configuration immediately to avoid theme flash
   const getInitialConfig = () => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
-      const themeOverride = localStorage.getItem('routine_theme');
-      if (stored.config) {
-        const cfg = { 
-          theme: 'light', // fallback
-          sundayMode: 'pause',
-          lang: 'pt',
-          backgroundImage: '',
-          routineMode: 'simple',
-          activeShifts: ['default'],
-          ...stored.config // override with whatever was saved
-        };
-        if (themeOverride) {
-          cfg.theme = themeOverride;
-        }
-        // apply theme immediately to <html>
-        if (typeof window !== 'undefined') {
-          const root = window.document.documentElement;
-          root.classList.add(cfg.theme === 'dark' ? 'dark' : 'light');
-        }
-        return cfg;
-      }
-    } catch (e) {
-      console.warn('failed reading config from storage', e);
-    }
     const defaultCfg = {
       theme: 'light',
       sundayMode: 'pause',
@@ -59,11 +33,48 @@ export const RoutineProvider = ({ children }) => {
       routineMode: 'simple',
       activeShifts: ['default'],
     };
-    if (typeof window !== 'undefined') {
-      const root = window.document.documentElement;
-      root.classList.add(defaultCfg.theme === 'dark' ? 'dark' : 'light');
+
+    try {
+      const stored = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
+      const themeOverride = localStorage.getItem('routine_theme');
+      
+      // Start with defaults and merge saved config (except theme)
+      const cfg = { ...defaultCfg };
+      if (stored.config) {
+        const { theme, ...otherConfig } = stored.config;
+        Object.assign(cfg, otherConfig);
+      }
+      
+      // Apply theme: explicit save > default
+      if (themeOverride && (themeOverride === 'light' || themeOverride === 'dark')) {
+        cfg.theme = themeOverride;
+      } else {
+        cfg.theme = 'light';
+        localStorage.setItem('routine_theme', 'light');
+      }
+      
+      console.log('🔄 Initial config loaded - Theme:', cfg.theme);
+      
+      // Apply class to html immediately
+      if (typeof window !== 'undefined') {
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        root.classList.add(cfg.theme === 'dark' ? 'dark' : 'light');
+      }
+      
+      return cfg;
+    } catch (e) {
+      console.warn('❌ Failed reading config from storage:', e);
+      
+      // Fallback: ensure html gets the default light class
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('routine_theme', 'light');
+        const root = window.document.documentElement;
+        root.classList.remove('light', 'dark');
+        root.classList.add('light');
+      }
+      return defaultCfg;
     }
-    return defaultCfg;
   };
 
   const [config, setConfig] = useState(getInitialConfig);
@@ -77,11 +88,26 @@ export const RoutineProvider = ({ children }) => {
     return TRANSLATIONS[lang][key] || key;
   };
 
+  // Ensure theme class is always correct on html element
   useEffect(() => {
     const root = window.document.documentElement;
+    const isDark = config.theme === 'dark';
+    
+    // Remove both classes first
     root.classList.remove('light', 'dark');
-    root.classList.add(config.theme === 'dark' ? 'dark' : 'light');
-  },[config.theme]);
+    
+    // Add the correct one
+    root.classList.add(isDark ? 'dark' : 'light');
+    
+    // Also apply inline to ensure override
+    if (isDark) {
+      root.style.removeProperty('background-color');
+    } else {
+      root.style.backgroundColor = 'var(--background)';
+    }
+    
+    console.log('🎨 Theme applied:', isDark ? 'DARK' : 'LIGHT', '- html class:', root.className);
+  }, [config.theme]);
 
   // --- 1. CARREGAR DADOS (CLOUD OU LOCAL) ---
   useEffect(() => {
@@ -129,7 +155,11 @@ export const RoutineProvider = ({ children }) => {
     if (data.currentWeek) setCurrentWeek(data.currentWeek);
     if (data.history) setHistory(data.history);
     if (data.goals) setGoals(data.goals);
-    if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
+    if (data.config) {
+      // Don't let stored config override the theme - it's controlled separately
+      const { theme, ...otherConfig } = data.config;
+      setConfig(prev => ({ ...prev, ...otherConfig }));
+    }
   };
 
   // --- 2. SALVAR DADOS (AUTO-SYNC COM DEBOUNCE) ---
