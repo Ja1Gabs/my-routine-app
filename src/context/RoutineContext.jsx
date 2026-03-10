@@ -23,14 +23,51 @@ export const RoutineProvider = ({ children }) => {
   const [goals, setGoals] = useState([]);
   
   // Configurações unificadas
-  const [config, setConfig] = useState({ 
-    theme: 'light', // default to light so you immediately see the clear background
-    sundayMode: 'pause', 
-    lang: 'pt',
-    backgroundImage: '',
-    routineMode: 'simple', // 'simple' | 'shifts'
-    activeShifts: ['default'] 
-  });
+  // attempt to load stored configuration immediately to avoid theme flash
+  const getInitialConfig = () => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
+      const themeOverride = localStorage.getItem('routine_theme');
+      if (stored.config) {
+        const cfg = { 
+          theme: 'light', // fallback
+          sundayMode: 'pause',
+          lang: 'pt',
+          backgroundImage: '',
+          routineMode: 'simple',
+          activeShifts: ['default'],
+          ...stored.config // override with whatever was saved
+        };
+        if (themeOverride) {
+          cfg.theme = themeOverride;
+        }
+        // apply theme immediately to <html>
+        if (typeof window !== 'undefined') {
+          const root = window.document.documentElement;
+          root.classList.add(cfg.theme === 'dark' ? 'dark' : 'light');
+        }
+        return cfg;
+      }
+    } catch (e) {
+      console.warn('failed reading config from storage', e);
+    }
+    const defaultCfg = {
+      theme: 'light',
+      sundayMode: 'pause',
+      lang: 'pt',
+      backgroundImage: '',
+      routineMode: 'simple',
+      activeShifts: ['default'],
+    };
+    if (typeof window !== 'undefined') {
+      const root = window.document.documentElement;
+      root.classList.add(defaultCfg.theme === 'dark' ? 'dark' : 'light');
+    }
+    return defaultCfg;
+  };
+
+  const [config, setConfig] = useState(getInitialConfig);
+
 
   const isFirstLoad = useRef(true);
 
@@ -73,7 +110,11 @@ export const RoutineProvider = ({ children }) => {
           if (data.currentWeek) setCurrentWeek(data.currentWeek);
           if (data.history) setHistory(data.history);
           if (data.goals) setGoals(data.goals);
-          if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
+          if (data.config) {
+            // never override the already-loaded theme (which may come from localStorage or user interaction)
+            const theme = config.theme;
+            setConfig(prev => ({ ...prev, ...data.config, theme }));
+          }
         }
       }
     } catch (error) {
@@ -92,11 +133,16 @@ export const RoutineProvider = ({ children }) => {
   };
 
   // --- 2. SALVAR DADOS (AUTO-SYNC COM DEBOUNCE) ---
+  // persist changes immediately; also keep theme in its own key so toggling is instant
   useEffect(() => {
     if (isFirstLoad.current) return;
 
+    const existing = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
     const dataToSave = { activities: activitiesPool, currentWeek, history, goals, config };
-    localStorage.setItem('routine_db_v10', JSON.stringify(dataToSave));
+    localStorage.setItem('routine_db_v10', JSON.stringify({ ...existing, ...dataToSave }));
+
+    // also stash theme separately to avoid latency on initial load
+    localStorage.setItem('routine_theme', config.theme);
 
     if (token) {
       const timer = setTimeout(() => {
