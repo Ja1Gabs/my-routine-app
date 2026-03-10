@@ -18,7 +18,7 @@ export const RoutineProvider = ({ children }) => {
   
   // Estado da Aplicação
   const [activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
-  const [currentWeek, setCurrentWeek] = useState([]); // Matriz: [{ morning: act, ... }, ...]
+  const [currentWeek, setCurrentWeek] = useState(() => Array.from({ length: 7 }, () => ({}))); // Matriz: [{ morning: act, ... }, ...]
   const [history, setHistory] = useState({});         // Chaves: "YYYY-MM-DD_shift"
   const [goals, setGoals] = useState([]);
   
@@ -26,7 +26,7 @@ export const RoutineProvider = ({ children }) => {
   // attempt to load stored configuration immediately to avoid theme flash
   const getInitialConfig = () => {
     const defaultCfg = {
-      theme: 'light',
+      theme: 'dark',
       sundayMode: 'pause',
       lang: 'pt',
       backgroundImage: '',
@@ -36,6 +36,7 @@ export const RoutineProvider = ({ children }) => {
 
     try {
       const stored = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
+      const savedTheme = localStorage.getItem('routine_theme');
       
       // Start with defaults and merge saved config (except theme)
       const cfg = { ...defaultCfg };
@@ -44,29 +45,33 @@ export const RoutineProvider = ({ children }) => {
         Object.assign(cfg, otherConfig);
       }
       
-      // ALWAYS force light on initial load - ignore stored theme preference
-      cfg.theme = 'light';
-      localStorage.setItem('routine_theme', 'light');
+      // Respect saved theme preference, or default to dark
+      if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+        cfg.theme = savedTheme;
+      } else {
+        cfg.theme = 'dark';
+        localStorage.setItem('routine_theme', 'dark');
+      }
       
-      console.log('🔄 Initial config loaded - Theme: LIGHT (forced)');
+      console.log('🔄 Initial config loaded - Theme:', cfg.theme);
       
       // Apply class to html immediately
       if (typeof window !== 'undefined') {
         const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
-        root.classList.add('light');
+        root.classList.add(cfg.theme === 'dark' ? 'dark' : 'light');
       }
       
       return cfg;
     } catch (e) {
       console.warn('❌ Failed reading config from storage:', e);
       
-      // Fallback: ensure html gets the default light class
+      // Fallback: ensure html gets the default dark class
       if (typeof window !== 'undefined') {
-        localStorage.setItem('routine_theme', 'light');
+        localStorage.setItem('routine_theme', 'dark');
         const root = window.document.documentElement;
         root.classList.remove('light', 'dark');
-        root.classList.add('light');
+        root.classList.add('dark');
       }
       return defaultCfg;
     }
@@ -119,8 +124,8 @@ export const RoutineProvider = ({ children }) => {
         const data = await res.json();
         if (Object.keys(data).length > 0) {
           if (data.activities) setActivitiesPool(data.activities);
-          if (data.currentWeek) setCurrentWeek(data.currentWeek);
-          if (data.history) setHistory(data.history);
+          if (data.currentWeek && Array.isArray(data.currentWeek)) setCurrentWeek(data.currentWeek);
+          if (data.history && typeof data.history === 'object') setHistory(data.history);
           if (data.goals) setGoals(data.goals);
           if (data.config) {
             // never override the already-loaded theme
@@ -138,8 +143,8 @@ export const RoutineProvider = ({ children }) => {
   const loadLocalData = () => {
     const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
     if (data.activities) setActivitiesPool(data.activities);
-    if (data.currentWeek) setCurrentWeek(data.currentWeek);
-    if (data.history) setHistory(data.history);
+    if (data.currentWeek && Array.isArray(data.currentWeek)) setCurrentWeek(data.currentWeek);
+    if (data.history && typeof data.history === 'object') setHistory(data.history);
     if (data.goals) setGoals(data.goals);
     if (data.config) {
       // Don't let stored config override the theme

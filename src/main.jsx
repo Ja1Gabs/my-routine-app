@@ -4,10 +4,11 @@ import App from './App.jsx'
 import './index.css'
 import { RoutineProvider } from './context/RoutineContext.jsx' // Importe o Provider
 
-// Only ensure light class exists before React renders (no inline styles)
-if (!document.documentElement.classList.contains('light')) {
-  document.documentElement.classList.add('light');
-}
+// Set initial theme based on saved preference or default to dark
+const saved = localStorage.getItem('routine_theme');
+const initialTheme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+document.documentElement.classList.remove('light', 'dark');
+document.documentElement.classList.add(initialTheme);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

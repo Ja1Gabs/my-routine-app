@@ -70,7 +70,7 @@ const WeekView = () => {
 <div className="custom-scrollbar flex overflow-x-auto pb-10 pt-4 snap-x snap-mandatory gap-6">
         
         {Array.from({ length: 7 }).map((_, index) => {
-          const dayData = currentWeek[index] || {}; // Puxa da matriz com fallback de segurança
+          const dayData = (currentWeek && currentWeek[index]) ? currentWeek[index] : {}; // Puxa da matriz com fallback de segurança
           const dayDate = addDays(startOfCurrentWeek, index);
           const dateStr = format(dayDate, 'yyyy-MM-dd');
           const isToday = isSameDay(today, dayDate);
