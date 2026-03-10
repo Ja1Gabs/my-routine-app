@@ -38,8 +38,8 @@ export default function Home() {
     >
       {/* Overlay de contraste: Ativado apenas quando há imagem de fundo configurada */}
       {config.backgroundImage && (
-        <div className="fixed inset-0 bg-black/70 dark:bg-black/80 backdrop-blur-[2px] z-0 pointer-events-none transition-opacity duration-500" />
-      )}
+  <div className="fixed inset-0 z-0 pointer-events-none bg-white/70 dark:bg-black/80 backdrop-blur-sm transition-colors duration-300" />
+)}
 
       <div className="max-w-7xl mx-auto relative z-10">
         

@@ -113,20 +113,21 @@ const WeekView = () => {
                   const histData = history[uniqueKey] || {};
 
                   return (
-                    <DayCard
-                      key={uniqueKey}
-                      activity={activity}
-                      date={dayDate}
-                      isToday={isToday}
-                      isCompleted={!!histData.completed}
-                      isExpanded={!!expandedDays[uniqueKey]}
-                      Icon={IconComponent}
-                      onToggleComplete={() => actions.toggleComplete(dateStr, shift)} // Chave matricial
-                      onToggleExpand={() => toggleExpand(uniqueKey)}
-                      dateStr={dateStr}
-                      shiftKey={shift}
-                      shiftLabel={config.routineMode === 'shifts' ? t(shift) : null} // Envia o nome do turno traduzido para o DayCard exibir, se necessário
-                    />
+                    <div key={shift} className="relative">
+                      <DayCard
+                        activity={activity}
+                        date={dayDate}
+                        isToday={isToday}
+                        isCompleted={!!histData.completed}
+                        isExpanded={!!expandedDays[uniqueKey]}
+                        Icon={IconComponent}
+                        onToggleComplete={() => actions.toggleComplete(dateStr, shift)}
+                        onToggleExpand={() => toggleExpand(uniqueKey)}
+                        dateStr={dateStr}
+                        shiftKey={shift}
+                        shiftLabel={config.routineMode === 'shifts' ? t(shift) : null}
+                      />
+                    </div>
                   );
                 })}
               </div>
