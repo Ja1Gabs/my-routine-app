@@ -6,6 +6,10 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(), // <--- Adicione isto
+    tailwindcss({
+      config: {
+        darkMode: 'class', // Force class-based dark mode (ignore system preference)
+      },
+    }),
   ],
 })
