@@ -16,7 +16,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, colorClass }) => (
   </div>
 );
 
-const StatsPanel = ({ completedDays }) => {
+const StatsPanel = ({ completedDays = {} }) => {
   const { t, stats } = useRoutine();
   
   // Lógica para o Rastreador da Semana Atual

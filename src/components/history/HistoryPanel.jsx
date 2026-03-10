@@ -4,7 +4,7 @@ import { ptBR, enUS } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 
-const HistoryPanel = ({ completedDays }) => {
+const HistoryPanel = ({ completedDays = {} }) => {
   const { t, config } = useRoutine();
   const today = new Date();
   const currentMonthStart = startOfMonth(today);
