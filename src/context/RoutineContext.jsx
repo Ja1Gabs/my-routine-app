@@ -24,7 +24,7 @@ export const RoutineProvider = ({ children }) => {
   
   // Configurações unificadas
   const [config, setConfig] = useState({ 
-    theme: 'dark', 
+    theme: 'light', // default to light so you immediately see the clear background
     sundayMode: 'pause', 
     lang: 'pt',
     backgroundImage: '',

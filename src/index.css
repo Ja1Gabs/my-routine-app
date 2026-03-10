@@ -38,21 +38,21 @@
   --ring: #ffffff;
 }
 
-.light {
-  /* LIGHT MODE (Branco Neve / Clean) */
-  --background: #f8fafc; /* Fundo levemente gelo para destacar os cards brancos */
-  --foreground: #0f172a;
-  --card: #ffffff; /* Cards branco puro */
+:root.light {
+  /* LIGHT MODE (Branco Absoluto) */
+  --background: #ffffff; /* fundo branco puro */
+  --foreground: #000000;
+  --card: #ffffff; /* cards também brancos para continuidade */
   --border: #e2e8f0;
-  --primary: #0f172a;
+  --primary: #000000;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
+  --secondary-foreground: #000000;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --ring: #0f172a;
+  --ring: #000000;
 }
 
 body {
@@ -78,3 +78,7 @@ body {
 .light .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 0, 0, 0.3); }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* Fallback helpers in case Tailwind's generated bg-* classes misinterpret the variable */
+.bg-background { background-color: var(--background) !important; }
+.text-foreground { color: var(--foreground) !important; }
+.border-border { border-color: var(--border) !important; }
