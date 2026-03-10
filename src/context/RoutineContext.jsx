@@ -77,6 +77,7 @@ export const RoutineProvider = ({ children }) => {
   };
   const deleteActivity = (id) => setActivitiesPool(prev => prev.filter(a => a.id !== id));
   const addGoal = (goal) => setGoals(prev =>[...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
+  const incrementGoal = (id) => setGoals(prev => prev.map(g => g.id === id ? { ...g, current: (g.current || 0) + 1 } : g));
 
   // --- SHUFFLE MATRICIAL (TURNOS) ---
   const shuffleWeek = (poolOverride = null) => {
@@ -216,7 +217,7 @@ export const RoutineProvider = ({ children }) => {
       stats: currentStats,
       actions: {
         login, logout, saveActivity, deleteActivity, shuffleWeek, 
-        toggleComplete, updateDayData, addGoal, setConfig
+        toggleComplete, updateDayData, addGoal, incrementGoal, setConfig
       }
     }}>
       {children}
