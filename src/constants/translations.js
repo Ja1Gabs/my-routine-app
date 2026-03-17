@@ -62,6 +62,12 @@ export const TRANSLATIONS = {
     historyTitle: "Histórico de Semanas",
     completedLegend: "Completado",
     registeredLegend: "Registrado",
+    dayDetails: "Detalhes do Dia",
+    noRecords: "Nenhum registro encontrado neste dia.",
+    shift: "Turno",
+    notes: "Anotações",
+    tasksCompleted: "Tarefas concluídas",
+    proofImage: "Imagem anexada",
     
     //Quadro livre
     board: "Quadro Livre",
@@ -197,6 +203,12 @@ export const TRANSLATIONS = {
     historyTitle: "Weekly History",
     completedLegend: "Completed",
     registeredLegend: "Registered",
+    dayDetails: "Day Details",
+    noRecords: "No records found for this day.",
+    shift: "Shift",
+    notes: "Notes",
+    tasksCompleted: "Completed tasks",
+    proofImage: "Attached image",
 
     //Freeboard
     board: "Freeboard",
