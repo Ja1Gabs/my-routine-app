@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, LayoutDashboard  } from 'lucide-react';
+import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, LayoutDashboard, Kanban   } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../context/RoutineContext';
 
@@ -22,7 +22,7 @@ export default function Home() {
   // Menu de Abas
   const tabs =[
     { id: 'week', label: 'week', icon: LayoutGrid },
-    { id: 'board', label: 'board', icon: LayoutDashboard },
+    { id: 'board', label: 'board', icon: Kanban  },
     { id: 'library', label: 'library', icon: Library },
     { id: 'goals', label: 'goals', icon: Target },
     { id: 'stats', label: 'stats', icon: BarChart3 },
