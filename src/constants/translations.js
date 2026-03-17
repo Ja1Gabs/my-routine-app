@@ -1,22 +1,25 @@
+// constants/translations.js
+
 export const TRANSLATIONS = {
   pt: {
     // App Basics
     appTitle: "Minha Rotina",
     appSubtitle: "Organize sua semana de forma criativa",
-    weekDaysShort: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+    weekDaysShort:["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
     example: "Exemplo",
     lastWeek: "Semana passada",
+    empty: "Vazio",
     
     // Auth & Tabs
     week: "Semana",
     library: "Biblioteca",
     goals: "Metas",
-    stats: "Stats",
+    stats: "Estatísticas",
     history: "Histórico",
-    config: "Config",
+    config: "Configurações",
     online: "Online",
 
-    // Goals Panel
+    // Goals Panel (Com Metas Sugeridas)
     myGoals: "Meus Objetivos",
     trackProgress: "Acompanhe seu progresso",
     newGoal: "Novo Objetivo",
@@ -28,6 +31,17 @@ export const TRANSLATIONS = {
     noGoalsDesc: "Crie objetivos para se manter motivado!",
     goalMeta: "Meta",
     goalCurrent: "Atual",
+    suggestedGoals: "Metas Sugeridas",
+    customGoal: "Criar Manualmente",
+    goalTemplate1: "Foco Semanal",
+    goalTemplate1Desc: "Mantenha uma sequência de 7 dias",
+    goalTemplate2: "Máquina de Produzir",
+    goalTemplate2Desc: "Complete 50 atividades",
+    goalTemplate3: "Constância de Ferro",
+    goalTemplate3Desc: "Mantenha sequência de 21 dias",
+    increment: "+1",
+    completedGoal: "Conquistado!",
+    delete: "Excluir",
 
     // Stats Panel
     totalCompleted: "Total Completado",
@@ -52,6 +66,7 @@ export const TRANSLATIONS = {
     taskPlaceholder: "Nova tarefa...",
     notePlaceholder: "Suas anotações...",
     saveNotes: "Salvar",
+    saveAndClose: "Fechar Aba",
     raffleTask: "Sorteado",
 
     // Library & Cards
@@ -93,7 +108,7 @@ export const TRANSLATIONS = {
     sundayDesc: "Modo de Domingo",
     sundayPause: "Pausa",
     sundayRandom: "Sorteio",
-    shuffle: "Embaralhar Semana",
+    shuffle: "Embaralhar Rotina",
     shuffleRoutine: "Embaralhar Rotina",
     account: "Conta",
     logout: "Sair",
@@ -103,9 +118,10 @@ export const TRANSLATIONS = {
     // App Basics
     appTitle: "My Routine",
     appSubtitle: "Organize your week creatively",
-    weekDaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    weekDaysShort:["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     example: "Example",
     lastWeek: "Last week",
+    empty: "Empty",
 
     // Auth & Tabs
     week: "Week",
@@ -116,7 +132,7 @@ export const TRANSLATIONS = {
     config: "Settings",
     online: "Online",
 
-    // Goals Panel
+    // Goals Panel (With Suggested Goals)
     myGoals: "My Goals",
     trackProgress: "Track your progress",
     newGoal: "New Goal",
@@ -128,6 +144,17 @@ export const TRANSLATIONS = {
     noGoalsDesc: "Create goals to stay motivated!",
     goalMeta: "Target",
     goalCurrent: "Current",
+    suggestedGoals: "Suggested Goals",
+    customGoal: "Create Manually",
+    goalTemplate1: "Weekly Focus",
+    goalTemplate1Desc: "Maintain a 7-day streak",
+    goalTemplate2: "Productivity Machine",
+    goalTemplate2Desc: "Complete 50 activities",
+    goalTemplate3: "Iron Consistency",
+    goalTemplate3Desc: "Maintain a 21-day streak",
+    increment: "+1",
+    completedGoal: "Achieved!",
+    delete: "Delete",
 
     // Stats Panel
     totalCompleted: "Total Completed",
@@ -152,6 +179,7 @@ export const TRANSLATIONS = {
     taskPlaceholder: "New task...",
     notePlaceholder: "Your notes...",
     saveNotes: "Save",
+    saveAndClose: "Close Tab",
     raffleTask: "Raffled",
 
     // Library & Cards
@@ -193,7 +221,7 @@ export const TRANSLATIONS = {
     sundayDesc: "Sunday Mode",
     sundayPause: "Pause",
     sundayRandom: "Shuffle",
-    shuffle: "Shuffle Week",
+    shuffle: "Shuffle Routine",
     shuffleRoutine: "Shuffle Routine",
     account: "Account",
     logout: "Logout",
