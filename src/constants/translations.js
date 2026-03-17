@@ -111,7 +111,9 @@ export const TRANSLATIONS = {
     unlimited: "Ilimitado",
     pastDay: "Dia Encerrado",
     outOfShuffles: "Sem embaralhos",
-    
+    dangerZone: "O dia está acabando!",
+    saveStreak: "Salve sua ofensiva!",
+    streakSafe: "Ofensiva garantida",
     // --- FORMATO E TURNOS (SHIFTS) ---
     routineFormat: "Formato da Rotina",
     formatSimple: "Simples (1 por dia)",
@@ -184,6 +186,9 @@ export const TRANSLATIONS = {
     increment: "+1",
     completedGoal: "Achieved!",
     delete: "Delete",
+    dangerZone: "The day is ending!",
+    saveStreak: "Save your streak!",
+    streakSafe: "Streak safe",
 
     preview: "Live Preview",
     basicInfo: "1. Identity",

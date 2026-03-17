@@ -12,8 +12,10 @@ import {
   CloudSun, 
   MoonStar,
   Rocket,
+  AlertCircle,
   Lock
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { format } from 'date-fns';
 import { ptBR, enUS } from 'date-fns/locale';
 import { THEMES } from '../../entities/theme';
@@ -36,7 +38,8 @@ const TaskItem = ({ task, onToggle, onDelete }) => (
     className="flex items-center gap-3 group bg-background/50 dark:bg-black/20 p-2 rounded-lg border border-border dark:border-white/5 hover:border-primary/50 dark:hover:border-white/20 transition-colors" 
     onClick={(e) => e.stopPropagation()} 
   >
-    <button 
+    <motion.button 
+      whileTap={{ scale: 0.8 }} // Efeito mola no clique
       onClick={onToggle}
       className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
         task.completed 
@@ -45,7 +48,7 @@ const TaskItem = ({ task, onToggle, onDelete }) => (
       }`}
     >
       {task.completed && <Check size={12} className="text-white dark:text-black" strokeWidth={3} />}
-    </button>
+    </motion.button>
     
     <span className={`text-xs font-medium flex-1 transition-all ${
       task.completed ? 'text-muted-foreground line-through' : 'text-foreground'
@@ -66,15 +69,15 @@ const DayCard = ({
   activity, 
   date, 
   isToday, 
-  isPast,        // NOVO: Prop para identificar se o dia já passou
+  isPast,
   isCompleted, 
   isExpanded, 
   onToggleComplete, 
   onToggleExpand, 
   Icon, 
-  dateStr,      // Ex: "2026-03-09"
-  shiftKey,     // Ex: "morning"
-  shiftLabel    // Ex: "Manhã" (traduzido para UI)
+  dateStr,     
+  shiftKey,    
+  shiftLabel    
 }) => {
   const { actions, history, config, t } = useRoutine();
   const fileInputRef = useRef(null);
@@ -89,21 +92,43 @@ const DayCard = ({
     );
   }
 
-  // Define tema e chaves seguras
+  // Define tema e chaves
   const theme = THEMES[activity.theme] || THEMES.slate;
   const actualDateStr = dateStr || format(date, 'yyyy-MM-dd');
   const actualShiftKey = shiftKey || 'default';
-  
-  // A CHAVE MATRICIAL DO HISTÓRICO
   const uniqueKey = `${actualDateStr}_${actualShiftKey}`;
+  
   const dayData = history[uniqueKey] || {};
   const dayTasks = dayData.tasks ||[]; 
   const dayImage = dayData.image || null;
-  const dayNotes = dayData.notes || '';
 
-  const dateLocale = config.lang === 'en' ? enUS : ptBR;
+  // --- LÓGICA DE URGÊNCIA (GAME FEEL) ---
+  const currentHour = new Date().getHours();
+  // Se for hoje, não estiver completo e passar das 18h
+  const isUrgent = isToday && !isCompleted && currentHour >= 18;
 
-  // --- HANDLERS ---
+  // --- LÓGICA DO CONFETE E TRAVA ---
+  const handleCompleteClick = (e) => {
+    e.stopPropagation();
+    if (isPast && !isCompleted) return; // Bloqueado se for dia passado
+
+    if (!isCompleted) {
+      // Dispara confete vindo da direção do card
+      const rect = e.target.getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
+      
+      confetti({
+        particleCount: 60,
+        spread: 60,
+        origin: { x, y },
+        colors:['#22c55e', '#3b82f6', '#f59e0b'] // Verde, Azul, Amarelo
+      });
+    }
+    onToggleComplete();
+  };
+
+  // --- HANDLERS (Sem alterações drásticas) ---
   const handleAddTask = () => {
     if (!newTaskText.trim()) return;
     const newTask = { id: crypto.randomUUID(), text: newTaskText, completed: false };
@@ -141,6 +166,7 @@ const DayCard = ({
         ${theme.card}
         ${isExpanded ? 'shadow-2xl z-20 ring-2 ring-primary/30' : 'h-44 hover:shadow-lg hover:-translate-y-1'}
         ${isCompleted && !isExpanded ? 'opacity-70 grayscale-[0.3]' : ''}
+        ${isUrgent && !isExpanded ? 'ring-2 ring-orange-500/80 shadow-[0_0_20px_-5px_rgba(249,115,22,0.4)] animate-pulse' : ''}
       `}
     >
       {/* BACKGROUND IMAGE PREVIEW (Quando Fechado) */}
@@ -151,23 +177,24 @@ const DayCard = ({
         </div>
       )}
 
-      {/* HEADER: Ícone, Dia da Semana e Turno */}
+      {/* HEADER: Ícone e Turno */}
       <div className="flex justify-between items-start mb-3 relative z-10">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme.iconBox} text-2xl shadow-inner bg-background/50 backdrop-blur-md border border-border`}>
           {activity.emoji ? <span>{activity.emoji}</span> : <Icon size={24} strokeWidth={2} />}
         </div>
         
         <div className="flex flex-col items-end gap-1">
-          {config.routineMode !== 'shifts' && (
-             <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest backdrop-blur-sm bg-background/50 px-2 py-0.5 rounded-md border border-border">
-               {format(date, 'EEEE', { locale: dateLocale })}
-             </div>
-          )}
-
           {shiftLabel && (
             <div className="flex items-center gap-1.5 bg-background border border-border px-2 py-1 rounded-md shadow-sm">
               {SHIFT_ICONS[shiftLabel] || SHIFT_ICONS[shiftKey]}
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{shiftLabel}</span>
+            </div>
+          )}
+
+          {/* Badge de Urgência */}
+          {isUrgent && !isExpanded && (
+            <div className="flex items-center gap-1 text-[9px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-md border border-orange-500/20">
+              <AlertCircle size={10} /> {t('saveStreak') || 'Atenção'}
             </div>
           )}
         </div>
@@ -187,26 +214,23 @@ const DayCard = ({
         </div>
       )}
 
-      {/* FOOTER ACTIONS (Com trava para dias passados) */}
+      {/* FOOTER ACTIONS */}
       <div className={`flex gap-2 mt-auto pt-3 relative z-10 ${isExpanded ? 'mb-4 border-b border-border pb-4' : ''}`}>
-        <button
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            // Se for dia passado e a tarefa não estiver concluída, bloqueia o clique
-            if (!isPast || isCompleted) onToggleComplete(); 
-          }}
+        <motion.button
+          whileTap={{ scale: (isPast && !isCompleted) ? 1 : 0.95 }} // Bouncy Effect no botão
+          onClick={handleCompleteClick}
           disabled={isPast && !isCompleted}
-          className={`flex-1 h-10 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95
+          className={`flex-1 h-10 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors
             ${(isPast && !isCompleted) 
-              ? 'bg-secondary text-muted-foreground opacity-50 cursor-not-allowed border-none' // Estado Travado
+              ? 'bg-secondary text-muted-foreground opacity-50 cursor-not-allowed border-none' 
               : isCompleted 
                 ? 'bg-green-500 text-white dark:text-black hover:bg-green-600 border-none shadow-md' 
                 : theme.buttonPrimary}
           `}
         >
-          {isCompleted ? <Check size={16} strokeWidth={3} /> : (isPast && !isCompleted && <Lock size={14} />)}
+          {isCompleted ? <Check size={16} strokeWidth={3} /> : (isPast && <Lock size={14} />)}
           {isCompleted ? t('done') : t('mark')}
-        </button>
+        </motion.button>
 
         <button
           onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
@@ -244,12 +268,11 @@ const DayCard = ({
             }}
             transition={{ duration: 0.3, ease:[0.04, 0.62, 0.23, 0.98] }} // Easing perfeito
             className="overflow-hidden relative z-10"
-            onClick={(e) => e.stopPropagation()} // Clicar aqui dentro NÃO fechará o card
+            onClick={(e) => e.stopPropagation()} 
           >
-            {/* O SEGREDO DO ANIMATE-PRESENCE: Isolar o padding interno do height: auto */}
             <div className="pt-4 space-y-4 pb-2">
               
-              {/* 1. Imagem Adicionada (Preview Grande) */}
+              {/* Imagem Adicionada (Preview Grande) */}
               {dayImage && (
                 <div className="relative rounded-xl overflow-hidden border border-border group shadow-md">
                   <img src={dayImage} className="w-full h-40 object-cover" alt="Upload" />
@@ -262,7 +285,7 @@ const DayCard = ({
                 </div>
               )}
 
-              {/* 2. Missão Sorteada */}
+              {/* Missão Sorteada */}
               {activity.assignedTask && (
                 <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
                   <div className="flex items-center gap-2 text-[10px] text-primary font-bold uppercase mb-1">
@@ -272,7 +295,7 @@ const DayCard = ({
                 </div>
               )}
 
-              {/* 3. Checklist / Subtarefas */}
+              {/* Checklist / Subtarefas */}
               <div className="bg-secondary p-3 rounded-xl border border-border">
                 <div className="flex justify-between items-center mb-3">
                   <label className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">
@@ -306,7 +329,7 @@ const DayCard = ({
                 </div>
               </div>
 
-              {/* 4. Bloco de Notas */}
+              {/* Bloco de Notas */}
               <div>
                 <label className="text-[10px] uppercase text-muted-foreground font-bold mb-1 block tracking-widest">
                   {t('notes') || 'Anotações'}
@@ -319,7 +342,7 @@ const DayCard = ({
                 />
               </div>
 
-              {/* 5. Botão Fechar Inferior */}
+              {/* Botão Fechar Inferior */}
               <button 
                 onClick={onToggleExpand}
                 className={`w-full h-10 mt-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 bg-secondary hover:bg-border text-foreground border border-border active:scale-95 transition-all`}
