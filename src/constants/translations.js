@@ -10,6 +10,10 @@ export const TRANSLATIONS = {
     lastWeek: "Semana passada",
     empty: "Vazio",
     
+    // --- NOVAS: Hibernação do Servidor ---
+    wakingServer: "Acordando o servidor...",
+    wakingServerDesc: "Como usamos um plano gratuito, isso pode levar cerca de 1 minuto. Pegue um café! ☕",
+    
     // Auth & Tabs
     week: "Semana",
     library: "Biblioteca",
@@ -123,6 +127,10 @@ export const TRANSLATIONS = {
     lastWeek: "Last week",
     empty: "Empty",
 
+    // --- NEW: Server Hibernation ---
+    wakingServer: "Waking up the server...",
+    wakingServerDesc: "Since we use a free plan, this might take about a minute. Grab a coffee! ☕",
+    
     // Auth & Tabs
     week: "Week",
     library: "Library",

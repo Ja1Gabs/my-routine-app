@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGrid, BarChart3, History, Settings, Target, Library } from 'lucide-react';
+import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../context/RoutineContext';
 
@@ -13,7 +13,7 @@ import LibraryPanel from '../components/library/LibraryPanel';
 import LoginScreen from '../components/auth/LoginScreen';
 
 export default function Home() {
-  const { user, config, t } = useRoutine();
+  const { user, config, t, isServerWaking } = useRoutine();
   const [activeTab, setActiveTab] = useState('week');
 
   // Bloqueio de acesso se não houver usuário logado
@@ -29,23 +29,47 @@ export default function Home() {
     { id: 'config', label: 'config', icon: Settings },
   ];
 
-  return (
+  return (  
     <div 
-      className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans transition-all duration-500 bg-cover bg-center bg-fixed relative"
+      className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans transition-colors duration-300 bg-cover bg-center bg-fixed relative"
       style={{ 
         backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : 'none' 
       }}
     >
       {/* Overlay de contraste: Ativado apenas quando há imagem de fundo configurada */}
       {config.backgroundImage && (
-  <div className="fixed inset-0 z-0 pointer-events-none bg-white/70 dark:bg-black/80 backdrop-blur-sm transition-colors duration-300" />
-)}
+        <div className="fixed inset-0 z-0 pointer-events-none bg-white/70 dark:bg-black/80 backdrop-blur-sm transition-colors duration-300" />
+      )}
+
+      {/* --- OVERLAY DE HIBERNAÇÃO (O SEGREDO PREMIUM) --- */}
+      <AnimatePresence>
+        {isServerWaking && (
+          <motion.div 
+            initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            animate={{ opacity: 1, backdropFilter: "blur(8px)" }}
+            exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/60"
+          >
+            <div className="bg-card p-8 rounded-3xl shadow-2xl border border-border flex flex-col items-center max-w-sm text-center">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                {/* Ícone de café pulando */}
+                <Coffee size={32} className="text-primary animate-bounce" />
+              </div>
+              <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">
+                {t('wakingServer') || "Acordando Servidor..."}
+              </h2>
+              <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                {t('wakingServerDesc') || "Como usamos uma hospedagem gratuita, o servidor pode levar alguns segundos para despertar. Pegue um café!"}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="max-w-7xl mx-auto relative z-10">
         
         {/* HEADER: Info do Usuário e Título */}
         <header className="text-center mb-10 pt-4">
-          
           <div className="flex items-center justify-center gap-3 mb-4">
              <div className="flex -space-x-2">
                <img 
@@ -108,11 +132,10 @@ export default function Home() {
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              {/* O WeekView agora puxa seus dados diretamente do Contexto */}
+              {/* Painéis puxam seus dados diretamente do Contexto */}
               {activeTab === 'week' && <WeekView />}
               {activeTab === 'library' && <LibraryPanel />}
               {activeTab === 'goals' && <GoalPanel />}
-              {/* Stats e History continuam puxando dados do contexto internamente, sem precisar passar via Props */}
               {activeTab === 'stats' && <StatsPanel />}
               {activeTab === 'history' && <HistoryPanel />}
               {activeTab === 'config' && <SettingsPanel />}
