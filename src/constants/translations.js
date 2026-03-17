@@ -73,6 +73,9 @@ export const TRANSLATIONS = {
     saveAndClose: "Fechar Aba",
     raffleTask: "Sorteado",
 
+    preview: "Pré-visualização",
+    basicInfo: "1. Identidade",
+    rulesConfig: "2. Regras",
     // Library & Cards
     libTitle: "Biblioteca",
     libSubtitle: "Gerencie suas cartas e regras",
@@ -164,6 +167,9 @@ export const TRANSLATIONS = {
     completedGoal: "Achieved!",
     delete: "Delete",
 
+    preview: "Live Preview",
+    basicInfo: "1. Identity",
+    rulesConfig: "2. Rules",
     // Stats Panel
     totalCompleted: "Total Completed",
     currentStreak: "Current Streak",
