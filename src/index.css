@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 :root {
-  /* DARK MODE (Preto Profundo) - Padrão */
+  /* DARK MODE (Preto Profundo) - Padrï¿½o */
   --background: #0a0a0a;
   --foreground: #ffffff;
   --card: #121212;
@@ -119,4 +119,9 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.bg-dots {
+  background-image: radial-gradient(hsl(var(--muted-foreground) / 0.2) 1px, transparent 1px);
+  background-size: 24px 24px;
 }

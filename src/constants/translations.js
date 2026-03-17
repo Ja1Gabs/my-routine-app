@@ -63,6 +63,11 @@ export const TRANSLATIONS = {
     completedLegend: "Completado",
     registeredLegend: "Registrado",
     
+    //Quadro livre
+    board: "Quadro Livre",
+    boardDesc: "Arraste e organize suas atividades livremente",
+    addNode: "Adicionar ao Quadro",
+    dragMe: "Arraste-me",
     // Day Card
     today: "HOJE",
     done: "Concluído",
@@ -186,6 +191,11 @@ export const TRANSLATIONS = {
     completedLegend: "Completed",
     registeredLegend: "Registered",
 
+    //Freeboard
+    board: "Freeboard",
+    boardDesc: "Drag and organize your activities freely",
+    addNode: "Add to Board",
+    dragMe: "Drag me",
     // Day Card
     today: "TODAY",
     done: "Done",

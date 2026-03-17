@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee } from 'lucide-react';
+import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, LayoutDashboard  } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../context/RoutineContext';
 
@@ -11,7 +11,7 @@ import SettingsPanel from '../components/settings/SettingsPanel';
 import GoalPanel from '../components/goals/GoalPanel.jsx';
 import LibraryPanel from '../components/library/LibraryPanel';
 import LoginScreen from '../components/auth/LoginScreen';
-
+import CanvasView from '../components/views/CanvasView';
 export default function Home() {
   const { user, config, t, isServerWaking } = useRoutine();
   const [activeTab, setActiveTab] = useState('week');
@@ -22,6 +22,7 @@ export default function Home() {
   // Menu de Abas
   const tabs =[
     { id: 'week', label: 'week', icon: LayoutGrid },
+    { id: 'board', label: 'board', icon: KanbanSquare },
     { id: 'library', label: 'library', icon: Library },
     { id: 'goals', label: 'goals', icon: Target },
     { id: 'stats', label: 'stats', icon: BarChart3 },
@@ -134,6 +135,7 @@ export default function Home() {
             >
               {/* Painéis puxam seus dados diretamente do Contexto */}
               {activeTab === 'week' && <WeekView />}
+              {activeTab === 'board' && <CanvasView />}
               {activeTab === 'library' && <LibraryPanel />}
               {activeTab === 'goals' && <GoalPanel />}
               {activeTab === 'stats' && <StatsPanel />}

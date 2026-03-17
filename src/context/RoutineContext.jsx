@@ -14,16 +14,19 @@ const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'sla
 export const RoutineProvider = ({ children }) => {
   // --- ESTADOS DE AUTENTICAÇÃO ---
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('auth_token'));
+  const[token, setToken] = useState(localStorage.getItem('auth_token'));
   
   // --- NOVO ESTADO: Monitor de Hibernação do Render ---
-  const[isServerWaking, setIsServerWaking] = useState(false);
+  const [isServerWaking, setIsServerWaking] = useState(false);
 
   // --- ESTADOS DA APLICAÇÃO ---
-  const [activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
-  const[currentWeek, setCurrentWeek] = useState(() => Array.from({ length: 7 }, () => ({}))); 
-  const [history, setHistory] = useState({}); 
+  const[activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
+  const [currentWeek, setCurrentWeek] = useState(() => Array.from({ length: 7 }, () => ({}))); 
+  const[history, setHistory] = useState({}); 
   const [goals, setGoals] = useState([]);
+  
+  // --- NOVO ESTADO: Nodes do Quadro Livre ---
+  const [canvasNodes, setCanvasNodes] = useState([]);
   
   // --- CONFIGURAÇÃO COM LAZY LOAD (Previne piscar o tema no 1º load) ---
   const [config, setConfig] = useState(() => {
@@ -78,6 +81,7 @@ export const RoutineProvider = ({ children }) => {
               if (data.currentWeek) setCurrentWeek(data.currentWeek);
               if (data.history) setHistory(data.history);
               if (data.goals) setGoals(data.goals);
+              if (data.canvasNodes) setCanvasNodes(data.canvasNodes); // Load Canvas
               if (data.config) setConfig(data.config);
             }
           }
@@ -103,13 +107,15 @@ export const RoutineProvider = ({ children }) => {
     if (data.currentWeek) setCurrentWeek(data.currentWeek);
     if (data.history) setHistory(data.history);
     if (data.goals) setGoals(data.goals);
+    if (data.canvasNodes) setCanvasNodes(data.canvasNodes); // Load Canvas Local
   };
 
   // --- 💾 2. AUTO-SYNC (Salva Local e Manda pro Backend Silenciosamente) ---
   useEffect(() => {
     if (isFirstLoad.current) return;
     
-    const db = { activities: activitiesPool, currentWeek, history, goals, config };
+    // Atualizado para incluir os canvasNodes no salvamento
+    const db = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes };
     localStorage.setItem('routine_db_v10', JSON.stringify(db));
 
     if (token) {
@@ -122,11 +128,11 @@ export const RoutineProvider = ({ children }) => {
           },
           body: JSON.stringify(db)
         }).catch(err => console.warn("Erro no sync silencioso com a nuvem:", err));
-      }, 3000); // Aguarda 3s após parar de digitar/interagir
+      }, 3000); // Aguarda 3s após parar de interagir
       
       return () => clearTimeout(timer);
     }
-  },[activitiesPool, currentWeek, history, goals, config, token]);
+  },[activitiesPool, currentWeek, history, goals, config, canvasNodes, token]);
 
   // --- 🔐 AUTH ACTIONS ---
   const login = async (email, password) => {
@@ -158,7 +164,7 @@ export const RoutineProvider = ({ children }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      return login(email, password); // Loga automaticamente após registro
+      return login(email, password);
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -173,8 +179,6 @@ export const RoutineProvider = ({ children }) => {
   };
 
   // --- 📊 SISTEMA DE ESTATÍSTICAS E MAPA DE DIAS ---
-  
-  // 1. Mapeia os dias completos (Verifica se TODOS os turnos do dia foram feitos)
   const completedDays = useMemo(() => {
     if (!history) return {};
     const shiftsToCheck = config.routineMode === 'shifts' && config.activeShifts?.length > 0 ? config.activeShifts : ['default'];
@@ -186,9 +190,8 @@ export const RoutineProvider = ({ children }) => {
     });
     
     return datesObj;
-  }, [history, config.routineMode, config.activeShifts]);
+  },[history, config.routineMode, config.activeShifts]);
 
-  // 2. Calcula Sequências e Totais
   const stats = useMemo(() => {
     let daily = 0;
     let dDate = new Date();
@@ -216,7 +219,7 @@ export const RoutineProvider = ({ children }) => {
     return { daily, weekly: 0, total };
   }, [completedDays, history]);
 
-  // --- 🎯 APP ACTIONS ---
+  // --- 🎯 APP ACTIONS BÁSICAS ---
   const saveActivity = (act) => {
     if (act.id) setActivitiesPool(prev => prev.map(a => a.id === act.id ? act : a));
     else setActivitiesPool(prev => [...prev, { ...act, id: crypto.randomUUID() }]);
@@ -227,7 +230,7 @@ export const RoutineProvider = ({ children }) => {
   };
   
   const addGoal = (goal) => {
-    setGoals(prev =>[...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
+    setGoals(prev => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]);
   };
   
   const incrementGoal = (id) => {
@@ -245,15 +248,39 @@ export const RoutineProvider = ({ children }) => {
   
   const toggleComplete = (dateStr, shiftKey) => { 
     const key = `${dateStr}_${shiftKey}`; 
-    setHistory(prev => ({ ...prev, [key]: { ...prev[key], completed: !prev[key]?.completed } })); 
+    setHistory(prev => ({ ...prev, [key]: { ...prev[key], completed: !prev[key]?.completed, lastUpdated: new Date().toISOString() } })); 
+  };
+
+  // --- 🎨 ACTIONS: QUADRO LIVRE (CANVAS) ---
+  const addCanvasNode = (activity) => {
+    const newNode = {
+      id: crypto.randomUUID(),
+      activityId: activity.id,
+      x: Math.random() * 200 + 50, // Posição inicial levemente aleatória
+      y: Math.random() * 200 + 50,
+      tasks: activity.defaultTasks?.map(t => ({ id: crypto.randomUUID(), text: t, completed: false })) ||[],
+      notes: ''
+    };
+    setCanvasNodes(prev => [...prev, newNode]);
+  };
+
+  const updateCanvasNodePos = (id, newX, newY) => {
+    setCanvasNodes(prev => prev.map(node => node.id === id ? { ...node, x: newX, y: newY } : node));
+  };
+
+  const updateCanvasNodeData = (id, newData) => {
+    setCanvasNodes(prev => prev.map(node => node.id === id ? { ...node, ...newData } : node));
+  };
+
+  const deleteCanvasNode = (id) => {
+    setCanvasNodes(prev => prev.filter(node => node.id !== id));
   };
 
   // --- 🎲 SHUFFLE MATRICIAL (TURNOS) ---
   const shuffleWeek = (poolOverride = null) => {
-    const pool = (Array.isArray(poolOverride) && poolOverride.length > 0) ? poolOverride : [...activitiesPool];
+    const pool = (Array.isArray(poolOverride) && poolOverride.length > 0) ? poolOverride :[...activitiesPool];
     const targetShifts = config.routineMode === 'shifts' ? (config.activeShifts?.length > 0 ? config.activeShifts : ['morning']) : ['default'];
     
-    // Se não houver atividades cadastradas
     if (!pool || pool.length === 0) {
       setCurrentWeek(Array.from({ length: 7 }, () => { 
         let obj = {}; 
@@ -269,7 +296,6 @@ export const RoutineProvider = ({ children }) => {
       return obj; 
     });
 
-    // Resolve o modo de Domingo
     if (config.sundayMode === 'pause') { 
       targetShifts.forEach(s => weekPlan[6][s] = FIXED_SUNDAY); 
     } else if (config.sundayMode !== 'random') { 
@@ -277,7 +303,6 @@ export const RoutineProvider = ({ children }) => {
       if (fixedAct) targetShifts.forEach(s => weekPlan[6][s] = { ...fixedAct, assignedTask: '', fixed: true }); 
     }
 
-    // Cria e embaralha o deck baseado nas frequências
     let deck =[]; 
     pool.forEach(act => { 
       const freq = act.rules?.frequency || 1; 
@@ -285,7 +310,6 @@ export const RoutineProvider = ({ children }) => {
     });
     deck = deck.sort(() => Math.random() - 0.5);
 
-    // Distribuição das cartas
     for (let card of deck) {
       const allowedDays = card.rules?.allowedDays ||[0, 1, 2, 3, 4, 5, 6]; 
       const allowedShifts = card.rules?.allowedShifts || targetShifts; 
@@ -305,7 +329,6 @@ export const RoutineProvider = ({ children }) => {
       }
     }
 
-    // Fallback para preencher buracos remanescentes
     for (let i = 0; i < 7; i++) {
       for (let s of targetShifts) {
         if (weekPlan[i][s] === null) {
@@ -331,11 +354,12 @@ export const RoutineProvider = ({ children }) => {
       user, 
       config, 
       t,
-      isServerWaking, // Exportado para exibir a tela de carregamento na UI
+      isServerWaking,
       currentWeek, 
       activitiesPool, 
       history, 
       goals,
+      canvasNodes, // Exportado para uso no CanvasPanel
       completedDays, 
       stats,
       actions: {
@@ -349,7 +373,11 @@ export const RoutineProvider = ({ children }) => {
         updateDayData, 
         addGoal, 
         incrementGoal, 
-        deleteGoal, 
+        deleteGoal,
+        addCanvasNode,           // Canvas Actions
+        updateCanvasNodePos,     // Canvas Actions
+        updateCanvasNodeData,    // Canvas Actions
+        deleteCanvasNode,        // Canvas Actions
         setConfig
       }
     }}>
