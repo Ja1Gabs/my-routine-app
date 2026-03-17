@@ -22,7 +22,7 @@ export default function Home() {
   // Menu de Abas
   const tabs =[
     { id: 'week', label: 'week', icon: LayoutGrid },
-    { id: 'board', label: 'board', icon: KanbanSquare },
+    { id: 'board', label: 'board', icon: LayoutDashboard },
     { id: 'library', label: 'library', icon: Library },
     { id: 'goals', label: 'goals', icon: Target },
     { id: 'stats', label: 'stats', icon: BarChart3 },
