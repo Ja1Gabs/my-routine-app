@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, LayoutDashboard, Kanban   } from 'lucide-react';
+import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, LayoutDashboard, Kanban, dayNotes   } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../context/RoutineContext';
 
