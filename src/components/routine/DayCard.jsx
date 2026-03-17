@@ -11,7 +11,8 @@ import {
   Sun, 
   CloudSun, 
   MoonStar,
-  Rocket
+  Rocket,
+  Lock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR, enUS } from 'date-fns/locale';
@@ -65,6 +66,7 @@ const DayCard = ({
   activity, 
   date, 
   isToday, 
+  isPast,        // NOVO: Prop para identificar se o dia já passou
   isCompleted, 
   isExpanded, 
   onToggleComplete, 
@@ -76,7 +78,7 @@ const DayCard = ({
 }) => {
   const { actions, history, config, t } = useRoutine();
   const fileInputRef = useRef(null);
-  const [newTaskText, setNewTaskText] = useState("");
+  const[newTaskText, setNewTaskText] = useState("");
 
   // Tratamento para Card Vazio (Buraco na grade)
   if (!activity) {
@@ -105,7 +107,7 @@ const DayCard = ({
   const handleAddTask = () => {
     if (!newTaskText.trim()) return;
     const newTask = { id: crypto.randomUUID(), text: newTaskText, completed: false };
-    actions.updateDayData(actualDateStr, actualShiftKey, { tasks: [...dayTasks, newTask] });
+    actions.updateDayData(actualDateStr, actualShiftKey, { tasks:[...dayTasks, newTask] });
     setNewTaskText("");
   };
 
@@ -185,17 +187,24 @@ const DayCard = ({
         </div>
       )}
 
-      {/* FOOTER ACTIONS */}
+      {/* FOOTER ACTIONS (Com trava para dias passados) */}
       <div className={`flex gap-2 mt-auto pt-3 relative z-10 ${isExpanded ? 'mb-4 border-b border-border pb-4' : ''}`}>
         <button
-          onClick={(e) => { e.stopPropagation(); onToggleComplete(); }}
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            // Se for dia passado e a tarefa não estiver concluída, bloqueia o clique
+            if (!isPast || isCompleted) onToggleComplete(); 
+          }}
+          disabled={isPast && !isCompleted}
           className={`flex-1 h-10 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95
-            ${isCompleted 
-              ? 'bg-green-500 text-white dark:text-black hover:bg-green-600 border-none shadow-md' 
-              : theme.buttonPrimary}
+            ${(isPast && !isCompleted) 
+              ? 'bg-secondary text-muted-foreground opacity-50 cursor-not-allowed border-none' // Estado Travado
+              : isCompleted 
+                ? 'bg-green-500 text-white dark:text-black hover:bg-green-600 border-none shadow-md' 
+                : theme.buttonPrimary}
           `}
         >
-          {isCompleted && <Check size={16} strokeWidth={3} />}
+          {isCompleted ? <Check size={16} strokeWidth={3} /> : (isPast && !isCompleted && <Lock size={14} />)}
           {isCompleted ? t('done') : t('mark')}
         </button>
 

@@ -14,55 +14,76 @@ const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'sla
 export const RoutineProvider = ({ children }) => {
   // --- ESTADOS DE AUTENTICAÇÃO ---
   const [user, setUser] = useState(null);
-  const[token, setToken] = useState(localStorage.getItem('auth_token'));
+  const [token, setToken] = useState(localStorage.getItem('auth_token'));
   
-  // --- NOVO ESTADO: Monitor de Hibernação do Render ---
-  const [isServerWaking, setIsServerWaking] = useState(false);
-
   // --- ESTADOS DA APLICAÇÃO ---
   const[activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
   const [currentWeek, setCurrentWeek] = useState(() => Array.from({ length: 7 }, () => ({}))); 
   const[history, setHistory] = useState({}); 
   const [goals, setGoals] = useState([]);
+  const[canvasNodes, setCanvasNodes] = useState([]); // Nodes do Quadro Livre
   
-  // --- NOVO ESTADO: Nodes do Quadro Livre ---
-  const [canvasNodes, setCanvasNodes] = useState([]);
-  
+  // --- ESTADOS DE INTERFACE E CONTROLE ---
+  const [isServerWaking, setIsServerWaking] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false); // Estado da Animação do Shuffle
+
   // --- CONFIGURAÇÃO COM LAZY LOAD (Previne piscar o tema no 1º load) ---
   const [config, setConfig] = useState(() => {
     try {
-      const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}'); 
+      const data = JSON.parse(localStorage.getItem('routine_db_v11') || '{}'); 
       if (data.config) return data.config;
     } catch (e) {}
+    
     return { 
       theme: 'dark', 
       sundayMode: 'pause', 
       lang: 'pt', 
       backgroundImage: '', 
       routineMode: 'simple', 
-      activeShifts: ['default'] 
+      activeShifts: ['default'],
+      autoShuffle: true,   // Embaralha automaticamente na segunda-feira
+      maxShuffles: 3,      // Limite por semana (0 = ilimitado)
+      shufflesUsed: 0,     // Conta quantas vezes o usuário sorteou
+      lastWeekStart: ''    // Registra quando foi o último reset
     };
   });
 
   const isFirstLoad = useRef(true);
   const t = (key) => TRANSLATIONS[config.lang || 'pt'][key] || key;
 
-  // --- EFEITO: APLICAÇÃO DO TEMA ---
+  // --- EFEITO: APLICAÇÃO DO TEMA NO HTML ---
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     if (config.theme === 'dark') root.classList.add('dark');
   }, [config.theme]);
 
-  // --- 📡 1. LÓGICA DE CONEXÃO COM O BACKEND (RENDER) ---
+  // --- 📡 1. LÓGICA DE CONEXÃO COM O BACKEND & VIRADA DE SEMANA ---
   useEffect(() => {
     const initApp = async () => {
       const savedUser = JSON.parse(localStorage.getItem('routine_user'));
       
+      // PREPARA A LÓGICA DE VIRADA DE SEMANA LOCALMENTE PRIMEIRO
+      const dataLocal = JSON.parse(localStorage.getItem('routine_db_v11') || '{}');
+      let currentConfig = dataLocal.config || config;
+      
+      const todayStartOfWeek = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      let didWeekChange = false;
+
+      // Detecta se a semana virou
+      if (currentConfig.lastWeekStart !== todayStartOfWeek) {
+        currentConfig = { 
+          ...currentConfig, 
+          shufflesUsed: 0, 
+          lastWeekStart: todayStartOfWeek 
+        };
+        setConfig(currentConfig);
+        didWeekChange = true;
+      }
+
+      // --- SINCRONIZAÇÃO COM O SERVIDOR ---
       if (savedUser && token) {
         setUser(savedUser);
-        
-        // 1. Inicia o cronômetro. Se a API não responder em 2.5s, mostra a tela de carregamento!
         const wakeTimer = setTimeout(() => setIsServerWaking(true), 2500);
 
         try {
@@ -70,7 +91,6 @@ export const RoutineProvider = ({ children }) => {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
-          // 2. Se respondeu, cancela o timer e esconde a tela de "acordando"
           clearTimeout(wakeTimer);
           setIsServerWaking(false);
 
@@ -78,45 +98,55 @@ export const RoutineProvider = ({ children }) => {
             const data = await res.json();
             if (Object.keys(data).length > 0) {
               if (data.activities) setActivitiesPool(data.activities);
-              if (data.currentWeek) setCurrentWeek(data.currentWeek);
+              if (data.currentWeek && Array.isArray(data.currentWeek) && !didWeekChange) {
+                // Se a semana virou, o autoShuffle vai sobrescrever o array vazio logo em seguida.
+                setCurrentWeek(data.currentWeek);
+              }
               if (data.history) setHistory(data.history);
               if (data.goals) setGoals(data.goals);
-              if (data.canvasNodes) setCanvasNodes(data.canvasNodes); // Load Canvas
-              if (data.config) setConfig(data.config);
+              if (data.canvasNodes) setCanvasNodes(data.canvasNodes);
+              
+              // Mescla config local alterada pela virada da semana com a config do server
+              setConfig(prev => ({ ...prev, ...(data.config || {}) }));
             }
           }
         } catch (error) {
-          // Se der erro de rede (offline), limpa o timer e usa os dados locais
           clearTimeout(wakeTimer);
           setIsServerWaking(false);
           console.warn("Modo Offline ativado ou erro no servidor:", error);
-          loadLocalBackup();
+          loadLocalBackup(dataLocal, didWeekChange);
         }
       } else {
-        loadLocalBackup();
+        loadLocalBackup(dataLocal, didWeekChange);
       }
+
+      // Executa o Auto Shuffle se a semana tiver virado e o autoShuffle estiver ligado
+      if (didWeekChange && currentConfig.autoShuffle) {
+         setTimeout(() => {
+           executeShuffle(dataLocal.activities ||[], currentConfig);
+         }, 800); // Pausa dramática na abertura do site para o shuffle automático
+      }
+
       isFirstLoad.current = false;
     };
 
     initApp();
-  }, [token]);
+  }, [token]); // Executa no mount e quando o token mudar
 
-  const loadLocalBackup = () => {
-    const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
-    if (data.activities) setActivitiesPool(data.activities);
-    if (data.currentWeek) setCurrentWeek(data.currentWeek);
-    if (data.history) setHistory(data.history);
-    if (data.goals) setGoals(data.goals);
-    if (data.canvasNodes) setCanvasNodes(data.canvasNodes); // Load Canvas Local
+  const loadLocalBackup = (dataLocal, didWeekChange) => {
+    if (dataLocal.activities) setActivitiesPool(dataLocal.activities);
+    if (dataLocal.currentWeek && !didWeekChange) setCurrentWeek(dataLocal.currentWeek);
+    if (dataLocal.history) setHistory(dataLocal.history);
+    if (dataLocal.goals) setGoals(dataLocal.goals);
+    if (dataLocal.canvasNodes) setCanvasNodes(dataLocal.canvasNodes);
   };
 
   // --- 💾 2. AUTO-SYNC (Salva Local e Manda pro Backend Silenciosamente) ---
   useEffect(() => {
     if (isFirstLoad.current) return;
     
-    // Atualizado para incluir os canvasNodes no salvamento
     const db = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes };
-    localStorage.setItem('routine_db_v10', JSON.stringify(db));
+    localStorage.setItem('routine_db_v11', JSON.stringify(db));
 
     if (token) {
       const timer = setTimeout(() => {
@@ -128,8 +158,7 @@ export const RoutineProvider = ({ children }) => {
           },
           body: JSON.stringify(db)
         }).catch(err => console.warn("Erro no sync silencioso com a nuvem:", err));
-      }, 3000); // Aguarda 3s após parar de interagir
-      
+      }, 3000); 
       return () => clearTimeout(timer);
     }
   },[activitiesPool, currentWeek, history, goals, config, canvasNodes, token]);
@@ -164,7 +193,7 @@ export const RoutineProvider = ({ children }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      return login(email, password);
+      return login(email, password); 
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -256,7 +285,7 @@ export const RoutineProvider = ({ children }) => {
     const newNode = {
       id: crypto.randomUUID(),
       activityId: activity.id,
-      x: Math.random() * 200 + 50, // Posição inicial levemente aleatória
+      x: Math.random() * 200 + 50, 
       y: Math.random() * 200 + 50,
       tasks: activity.defaultTasks?.map(t => ({ id: crypto.randomUUID(), text: t, completed: false })) ||[],
       notes: ''
@@ -276,10 +305,36 @@ export const RoutineProvider = ({ children }) => {
     setCanvasNodes(prev => prev.filter(node => node.id !== id));
   };
 
-  // --- 🎲 SHUFFLE MATRICIAL (TURNOS) ---
-  const shuffleWeek = (poolOverride = null) => {
-    const pool = (Array.isArray(poolOverride) && poolOverride.length > 0) ? poolOverride :[...activitiesPool];
-    const targetShifts = config.routineMode === 'shifts' ? (config.activeShifts?.length > 0 ? config.activeShifts : ['morning']) : ['default'];
+  // --- 🎲 ANIMAÇÃO E TRIGGER DO SHUFFLE ---
+  const triggerShuffle = async () => {
+    // Bloqueia se o limite for atingido e maxShuffles não for infinito (0)
+    if (config.maxShuffles > 0 && config.shufflesUsed >= config.maxShuffles) {
+      alert("Você atingiu o limite de embaralhos para esta semana!"); // Opcional, pode usar um toast da UI depois
+      return; 
+    }
+
+    setIsShuffling(true); // Inicia a animação UI de saída dos cards
+    setCurrentWeek([]); // Limpa a grade de vez
+
+    // Tempo dramático para a UI desaparecer (400ms)
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    // Executa o algoritmo central pesado
+    executeShuffle(activitiesPool, config);
+    
+    // Contabiliza o uso
+    setConfig(prev => ({ ...prev, shufflesUsed: (prev.shufflesUsed || 0) + 1 }));
+    
+    // Cards voltam voando graças à AnimatePresence no WeekView
+    setIsShuffling(false); 
+  };
+
+  // --- O ALGORITMO CENTRAL DO SHUFFLE (ISOLADO PARA O AUTO-SHUFFLE) ---
+  const executeShuffle = (poolSource, currentConfig) => {
+    const pool = poolSource.length > 0 ? poolSource :[...activitiesPool];
+    const targetShifts = currentConfig.routineMode === 'shifts' 
+      ? (currentConfig.activeShifts?.length > 0 ? currentConfig.activeShifts : ['morning']) 
+      :['default'];
     
     if (!pool || pool.length === 0) {
       setCurrentWeek(Array.from({ length: 7 }, () => { 
@@ -296,10 +351,10 @@ export const RoutineProvider = ({ children }) => {
       return obj; 
     });
 
-    if (config.sundayMode === 'pause') { 
+    if (currentConfig.sundayMode === 'pause') { 
       targetShifts.forEach(s => weekPlan[6][s] = FIXED_SUNDAY); 
-    } else if (config.sundayMode !== 'random') { 
-      const fixedAct = pool.find(a => a.id === config.sundayMode); 
+    } else if (currentConfig.sundayMode !== 'random') { 
+      const fixedAct = pool.find(a => a.id === currentConfig.sundayMode); 
       if (fixedAct) targetShifts.forEach(s => weekPlan[6][s] = { ...fixedAct, assignedTask: '', fixed: true }); 
     }
 
@@ -355,11 +410,12 @@ export const RoutineProvider = ({ children }) => {
       config, 
       t,
       isServerWaking,
+      isShuffling, // Exportado para as animações no UI
       currentWeek, 
       activitiesPool, 
       history, 
       goals,
-      canvasNodes, // Exportado para uso no CanvasPanel
+      canvasNodes, 
       completedDays, 
       stats,
       actions: {
@@ -368,16 +424,16 @@ export const RoutineProvider = ({ children }) => {
         logout, 
         saveActivity, 
         deleteActivity, 
-        shuffleWeek, 
+        triggerShuffle,       // A UI vai chamar esse trigger com animação!
         toggleComplete, 
         updateDayData, 
         addGoal, 
         incrementGoal, 
         deleteGoal,
-        addCanvasNode,           // Canvas Actions
-        updateCanvasNodePos,     // Canvas Actions
-        updateCanvasNodeData,    // Canvas Actions
-        deleteCanvasNode,        // Canvas Actions
+        addCanvasNode,        
+        updateCanvasNodePos,  
+        updateCanvasNodeData, 
+        deleteCanvasNode,     
         setConfig
       }
     }}>

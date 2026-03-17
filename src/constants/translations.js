@@ -98,6 +98,13 @@ export const TRANSLATIONS = {
     tasksTitle: "Tarefas",
     noTasks: "Sem tarefas",
     saveCard: "Salvar",
+    autoShuffle: "Auto-Embaralhar (Nova Semana)",
+    autoShuffleDesc: "Sorteia a rotina sozinho toda segunda-feira",
+    maxShuffles: "Limite de Embaralhos (Por semana)",
+    shufflesLeft: "restantes",
+    unlimited: "Ilimitado",
+    pastDay: "Dia Encerrado",
+    outOfShuffles: "Sem embaralhos",
     
     // --- FORMATO E TURNOS (SHIFTS) ---
     routineFormat: "Formato da Rotina",
@@ -249,6 +256,14 @@ export const TRANSLATIONS = {
     shuffleRoutine: "Shuffle Routine",
     account: "Account",
     logout: "Logout",
-    reset: "Reset"
+    reset: "Reset",
+    autoShuffle: "Auto-Shuffle (New Week)",
+    autoShuffleDesc: "Automatically shuffles the routine every Monday",
+    maxShuffles: "Shuffle Limit (Per week)",
+    shufflesLeft: "left",
+    unlimited: "Unlimited",
+    pastDay: "Day Closed",
+    outOfShuffles: "Out of shuffles",
+
   }
 };
