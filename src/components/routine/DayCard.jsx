@@ -81,7 +81,7 @@ const DayCard = ({
 }) => {
   const { actions, history, config, t } = useRoutine();
   const fileInputRef = useRef(null);
-  const[newTaskText, setNewTaskText] = useState("");
+  const [newTaskText, setNewTaskText] = useState("");
 
   // Tratamento para Card Vazio (Buraco na grade)
   if (!activity) {
@@ -101,6 +101,7 @@ const DayCard = ({
   const dayData = history[uniqueKey] || {};
   const dayTasks = dayData.tasks ||[]; 
   const dayImage = dayData.image || null;
+  const dayNotes = dayData.notes || '';
 
   // --- LÓGICA DE URGÊNCIA (GAME FEEL) ---
   const currentHour = new Date().getHours();
@@ -128,7 +129,7 @@ const DayCard = ({
     onToggleComplete();
   };
 
-  // --- HANDLERS (Sem alterações drásticas) ---
+  // --- HANDLERS ---
   const handleAddTask = () => {
     if (!newTaskText.trim()) return;
     const newTask = { id: crypto.randomUUID(), text: newTaskText, completed: false };
@@ -228,7 +229,7 @@ const DayCard = ({
                 : theme.buttonPrimary}
           `}
         >
-          {isCompleted ? <Check size={16} strokeWidth={3} /> : (isPast && <Lock size={14} />)}
+          {isCompleted ? <Check size={16} strokeWidth={3} /> : (isPast && !isCompleted && <Lock size={14} />)}
           {isCompleted ? t('done') : t('mark')}
         </motion.button>
 
