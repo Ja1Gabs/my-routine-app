@@ -14,14 +14,13 @@ const RoutineContext = createContext();
 export const useRoutine = () => useContext(RoutineContext);
 
 const API_URL = import.meta.env.VITE_API_URL || "https://my-routine-app-jxx7.onrender.com";
-const DEFAULT_ACTIVITIES = [];
 const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
 
 export const RoutineProvider = ({ children }) => {
   // --- ESTADOS ---
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('auth_token'));
-  const [activitiesPool, setActivitiesPool] = useState(DEFAULT_ACTIVITIES);
+  const [activitiesPool, setActivitiesPool] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(() => Array.from({ length: 7 }, () => ({}))); 
   const [history, setHistory] = useState({}); 
   const [goals, setGoals] = useState([]);
@@ -126,6 +125,33 @@ export const RoutineProvider = ({ children }) => {
     }
   }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, token]);
 
+  // --- ACTIONS DE HISTÓRICO (COM SNAPSHOT/FOTO DA ATIVIDADE) ---
+  const updateDayData = (dateStr, shiftKey, newData, activitySnapshot) => {
+    const key = `${dateStr}_${shiftKey}`;
+    setHistory(prev => ({
+      ...prev,
+      [key]: { 
+        ...prev[key], 
+        ...newData, 
+        ...(activitySnapshot ? { activity: activitySnapshot } : {}), 
+        lastUpdated: new Date().toISOString() 
+      }
+    }));
+  };
+
+  const toggleComplete = (dateStr, shiftKey, activitySnapshot) => {
+    const key = `${dateStr}_${shiftKey}`;
+    setHistory(prev => ({
+      ...prev,
+      [key]: { 
+        ...prev[key], 
+        completed: !prev[key]?.completed,
+        ...(activitySnapshot ? { activity: activitySnapshot } : {}),
+        lastUpdated: new Date().toISOString()
+      }
+    }));
+  };
+
   // --- ALGORITMO DE SHUFFLE (CONSOLIDADO COM TIME-LOCK) ---
   const executeShuffle = (poolOverride = null, configOverride = null) => {
     const activeConfig = configOverride || config;
@@ -148,7 +174,6 @@ export const RoutineProvider = ({ children }) => {
     const currentHour = today.getHours();
     const startOfCurrentWeek = startOfWeek(todayDateOnly, { weekStartsOn: 1 });
 
-    // 1. Criar esqueleto preservando o passado (Time-Lock)
     let weekPlan = Array.from({ length: 7 }, (_, i) => {
       let dayObj = {};
       const dayDate = addDays(startOfCurrentWeek, i);
@@ -161,7 +186,6 @@ export const RoutineProvider = ({ children }) => {
           if (s === 'morning' && currentHour >= 12) isPastShift = true;
           if (s === 'afternoon' && currentHour >= 18) isPastShift = true;
         }
-        // Se já passou, mantém o que existia no estado atual
         if (isPastShift && currentWeek[i] && currentWeek[i][s]) {
           dayObj[s] = currentWeek[i][s];
         } else {
@@ -171,7 +195,6 @@ export const RoutineProvider = ({ children }) => {
       return dayObj;
     });
 
-    // 2. Configurar Domingo (Se não estiver travado)
     if (activeConfig.sundayMode === 'pause') {
       targetShifts.forEach(s => { if (weekPlan[6][s] === null) weekPlan[6][s] = FIXED_SUNDAY; });
     } else if (activeConfig.sundayMode !== 'random') {
@@ -181,7 +204,6 @@ export const RoutineProvider = ({ children }) => {
       });
     }
 
-    // 3. Preparar Deck de Atividades
     let deck = [];
     pool.forEach(act => {
       const freq = act.rules?.frequency || 1;
@@ -189,7 +211,6 @@ export const RoutineProvider = ({ children }) => {
     });
     deck = deck.sort(() => Math.random() - 0.5);
 
-    // 4. Distribuir Deck nos espaços vazios (null)
     for (let card of deck) {
       const allowedDays = card.rules?.allowedDays || [0, 1, 2, 3, 4, 5, 6];
       const allowedShifts = card.rules?.allowedShifts || targetShifts;
@@ -209,7 +230,6 @@ export const RoutineProvider = ({ children }) => {
       }
     }
 
-    // 5. Preenchimento de segurança (Backfill)
     for (let i = 0; i < 7; i++) {
       for (let s of targetShifts) {
         if (weekPlan[i][s] === null) {
@@ -242,23 +262,21 @@ export const RoutineProvider = ({ children }) => {
     setIsShuffling(false); 
   };
 
-  // --- ACTIONS AUXILIARES ---
+  // --- AUTH ACTIONS ---
   const login = async (email, password) => {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok) return { success: false, error: data.error };
-    setToken(data.token); setUser(data.user);
-    localStorage.setItem('auth_token', data.token);
-    localStorage.setItem('routine_user', JSON.stringify(data.user));
-    return { success: true };
-  };
-
-  const logout = () => { 
-    localStorage.clear(); window.location.reload(); 
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setToken(data.token); setUser(data.user);
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('routine_user', JSON.stringify(data.user));
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
   };
 
   // --- ESTATÍSTICAS ---
@@ -280,12 +298,13 @@ export const RoutineProvider = ({ children }) => {
     <RoutineContext.Provider value={{
       user, config, t, isServerWaking, isShuffling, currentWeek, activitiesPool, history, goals, canvasNodes, completedDays, stats,
       actions: {
-        login, logout, 
+        login, 
+        logout: () => { localStorage.clear(); window.location.reload(); }, 
         saveActivity: (act) => act.id ? setActivitiesPool(p => p.map(a => a.id === act.id ? act : a)) : setActivitiesPool(p => [...p, { ...act, id: crypto.randomUUID() }]),
         deleteActivity: (id) => setActivitiesPool(p => p.filter(a => a.id !== id)),
         triggerShuffle,
-        toggleComplete: (d, s) => setHistory(p => ({ ...p, [`${d}_${s}`]: { ...p[`${d}_${s}`], completed: !p[`${d}_${s}`]?.completed, lastUpdated: new Date().toISOString() } })),
-        updateDayData: (d, s, data) => setHistory(p => ({ ...p, [`${d}_${s}`]: { ...p[`${d}_${s}`], ...data, lastUpdated: new Date().toISOString() } })),
+        toggleComplete, 
+        updateDayData, 
         addCanvasNode: (act) => setCanvasNodes(p => [...p, { id: crypto.randomUUID(), activityId: act.id, x: 100, y: 100, tasks: act.defaultTasks?.map(t=>({id: crypto.randomUUID(), text: t, completed: false})) || [] }]),
         updateCanvasNodePos: (id, x, y) => setCanvasNodes(p => p.map(n => n.id === id ? { ...n, x, y } : n)),
         updateCanvasNodeData: (id, data) => setCanvasNodes(p => p.map(n => n.id === id ? { ...n, ...data } : n)),

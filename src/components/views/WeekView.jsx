@@ -164,7 +164,7 @@ const WeekView = () => {
                         isCompleted={isCompleted}
                         isExpanded={!!expandedDays[uniqueKey]}
                         Icon={IconComponent}
-                        onToggleComplete={() => actions.toggleComplete(dateStr, shift)}
+                        onToggleComplete={() => actions.toggleComplete(dateStr, shift, activity)}
                         onToggleExpand={() => toggleExpand(uniqueKey)}
                         dateStr={dateStr}
                         shiftKey={shift}

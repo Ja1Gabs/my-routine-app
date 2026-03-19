@@ -13,7 +13,7 @@ const DAYS_OF_WEEK =[
 const ActivityEditor = ({ initialData, onSave, onCancel }) => {
   const { t, config } = useRoutine();
   const [data, setData] = useState(initialData || { 
-    name: 'Nova Atividade', iconName: 'Rocket', emoji: '', theme: 'blue', defaultTasks:[],
+    name: '', iconName: 'Rocket', emoji: '', theme: 'blue', defaultTasks:[],
     rules: { frequency: 1, allowedDays:[0, 1, 2, 3, 4, 5, 6] }
   });
   const [newTask, setNewTask] = useState('');
@@ -26,6 +26,14 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
     }
   };
 
+  // CORREÇÃO: Função para remover tarefa adicionada
+  const removeTask = (index) => {
+    setData(prev => ({
+      ...prev,
+      defaultTasks: prev.defaultTasks.filter((_, i) => i !== index)
+    }));
+  };
+
   const toggleDay = (dayIndex) => {
     const currentDays = data.rules?.allowedDays ||[0,1,2,3,4,5,6];
     let newDays = currentDays.includes(dayIndex) ? currentDays.filter(d => d !== dayIndex) : [...currentDays, dayIndex];
@@ -35,7 +43,6 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-primary outline-none transition-colors placeholder:text-muted-foreground";
   const labelClass = "text-[10px] uppercase text-muted-foreground font-bold mb-1.5 block tracking-wider";
 
-  // Estilo do Tema em Tempo Real
   const theme = THEMES[data.theme] || THEMES.slate;
   const LiveIcon = ICON_MAP[data.iconName] || Rocket;
 
@@ -47,18 +54,14 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
       </div>
       
       <div className="flex flex-col-reverse md:flex-row gap-8">
-        
-        {/* LADO ESQUERDO: FORMULÁRIO */}
         <div className="flex-1 space-y-6">
-          
           {/* Seção 1: Identidade */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-primary uppercase border-b border-border pb-1">{t('basicInfo')}</h4>
-            
             <div>
               <label className={labelClass}>{t('cardName')}</label>
               <input 
-                className={inputClass} value={data.name}
+                className={inputClass} value={data.name} placeholder="Ex: Meditação, Academia..."
                 onChange={e => setData({...data, name: e.target.value})}
               />
             </div>
@@ -67,8 +70,8 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
               <div>
                 <label className={labelClass}>{t('visual')}</label>
                 <div className="flex bg-secondary p-1 rounded-lg border border-border mb-2">
-                  <button onClick={() => setIconType('icon')} className={`flex-1 text-xs py-1 rounded transition-colors ${iconType === 'icon' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>{t('icon')}</button>
-                  <button onClick={() => setIconType('emoji')} className={`flex-1 text-xs py-1 rounded transition-colors ${iconType === 'emoji' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>{t('emoji')}</button>
+                  <button type="button" onClick={() => setIconType('icon')} className={`flex-1 text-xs py-1 rounded transition-colors ${iconType === 'icon' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>{t('icon')}</button>
+                  <button type="button" onClick={() => setIconType('emoji')} className={`flex-1 text-xs py-1 rounded transition-colors ${iconType === 'emoji' ? 'bg-background shadow text-foreground' : 'text-muted-foreground'}`}>{t('emoji')}</button>
                 </div>
                 {iconType === 'icon' ? (
                   <select className={inputClass} value={data.iconName} onChange={e => setData({...data, iconName: e.target.value, emoji: ''})}>
@@ -85,7 +88,6 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
                   <select className={`${inputClass} pl-8`} value={data.theme} onChange={e => setData({...data, theme: e.target.value})}>
                     {Object.keys(THEMES).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                   </select>
-                  {/* Cor do preview no select */}
                   <div className={`absolute left-3 top-3.5 w-3 h-3 rounded-full bg-${data.theme}-500`} />
                 </div>
               </div>
@@ -95,13 +97,12 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
           {/* Seção 2: Regras */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-primary uppercase border-b border-border pb-1">{t('rulesConfig')}</h4>
-            
             <div className="flex items-center justify-between bg-secondary p-3 rounded-xl border border-border">
               <label className="text-xs font-bold text-foreground">{t('frequency')}</label>
               <div className="flex items-center gap-3">
-                <button onClick={() => setData(prev => ({...prev, rules: {...prev.rules, frequency: Math.max(1, (prev.rules?.frequency || 1) - 1)}}))} className="w-7 h-7 bg-background shadow-sm rounded flex items-center justify-center text-foreground hover:bg-border transition-colors">-</button>
+                <button type="button" onClick={() => setData(prev => ({...prev, rules: {...prev.rules, frequency: Math.max(1, (prev.rules?.frequency || 1) - 1)}}))} className="w-7 h-7 bg-background shadow-sm rounded flex items-center justify-center text-foreground hover:bg-border transition-colors">-</button>
                 <span className="text-sm font-black text-foreground w-4 text-center">{data.rules?.frequency || 1}</span>
-                <button onClick={() => setData(prev => ({...prev, rules: {...prev.rules, frequency: Math.min(7, (prev.rules?.frequency || 1) + 1)}}))} className="w-7 h-7 bg-background shadow-sm rounded flex items-center justify-center text-foreground hover:bg-border transition-colors">+</button>
+                <button type="button" onClick={() => setData(prev => ({...prev, rules: {...prev.rules, frequency: Math.min(7, (prev.rules?.frequency || 1) + 1)}}))} className="w-7 h-7 bg-background shadow-sm rounded flex items-center justify-center text-foreground hover:bg-border transition-colors">+</button>
               </div>
             </div>
 
@@ -111,7 +112,7 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
                 {DAYS_OF_WEEK.map((day) => {
                   const isSel = data.rules?.allowedDays?.includes(day.value);
                   return (
-                    <button key={day.value} onClick={() => toggleDay(day.value)}
+                    <button key={day.value} type="button" onClick={() => toggleDay(day.value)}
                       className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${isSel ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-background'}`}
                     >
                       {day.label}
@@ -120,41 +121,27 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
                 })}
               </div>
             </div>
-
-            {config.routineMode === 'shifts' && (
-              <div>
-                <label className={labelClass}>Turnos Permitidos</label>
-                <div className="flex gap-2">
-                  {['morning', 'afternoon', 'night'].map((shift) => {
-                    const isSel = !data.rules?.allowedShifts || data.rules.allowedShifts.includes(shift);
-                    return (
-                      <button key={shift} onClick={() => {
-                          const current = data.rules?.allowedShifts || ['morning','afternoon','night'];
-                          const newS = current.includes(shift) ? current.filter(s => s !== shift) : [...current, shift];
-                          setData(prev => ({ ...prev, rules: { ...prev.rules, allowedShifts: newS } }));
-                        }}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all border ${isSel ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-secondary text-muted-foreground border-border hover:bg-border'}`}
-                      >
-                        {t(shift)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Seção 3: Tarefas */}
+          {/* Seção 3: Tarefas - ONDE FOI APLICADA A CORREÇÃO SOLICITADA */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-primary uppercase border-b border-border pb-1">{t('tasksTitle')}</h4>
             <div className="flex gap-2">
               <input className={inputClass} placeholder={t('taskPlaceholder')} value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTask()} />
-              <button onClick={addTask} className="bg-primary hover:opacity-90 text-primary-foreground px-4 rounded-lg font-bold transition-colors"><Plus size={16}/></button>
+              <button type="button" onClick={addTask} className="bg-primary hover:opacity-90 text-primary-foreground px-4 rounded-lg font-bold transition-colors"><Plus size={16}/></button>
             </div>
+            
             <div className="flex flex-wrap gap-2 pt-2">
               {data.defaultTasks?.map((task, i) => (
-                <span key={i} className="text-xs bg-secondary border border-border px-3 py-1.5 rounded-lg text-foreground flex items-center gap-2 shadow-sm">
-                  {task} <button onClick={() => removeTask(i)} className="text-muted-foreground hover:text-destructive transition-colors"><X size={14}/></button>
+                <span key={i} className="text-xs bg-secondary border border-border pl-3 pr-1 py-1 rounded-lg text-foreground flex items-center gap-2 shadow-sm">
+                  {task} 
+                  <button 
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeTask(i); }} 
+                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer"
+                  >
+                    <X size={14}/>
+                  </button>
                 </span>
               ))}
             </div>
@@ -163,14 +150,11 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
           <button onClick={() => onSave(data)} className="w-full bg-foreground hover:bg-foreground/90 text-background py-3 rounded-xl font-bold text-sm flex justify-center items-center gap-2 shadow-lg transition-all active:scale-95 mt-4">
             <Save size={18}/> {t('saveCard')}
           </button>
-
         </div>
 
-        {/* LADO DIREITO: LIVE PREVIEW (Heurística de Feedback Real) */}
+        {/* LADO DIREITO: PREVIEW */}
         <div className="w-full md:w-64 flex-shrink-0 flex flex-col items-center">
           <label className="text-[10px] uppercase text-muted-foreground font-bold mb-3 tracking-widest">{t('preview')}</label>
-          
-          {/* Mockup exato do DayCard */}
           <div className={`w-full h-44 rounded-2xl border p-4 flex flex-col shadow-lg transition-all ${theme.card}`}>
             <div className="flex justify-between items-start mb-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${theme.iconBox} text-2xl shadow-sm bg-background border border-border transition-colors`}>
@@ -182,14 +166,7 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
               {t('mark')}
             </div>
           </div>
-
-          <div className="mt-6 text-center">
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">
-              <CalendarClock size={12}/> Sorteado {data.rules?.frequency || 1}x por semana
-            </div>
-          </div>
         </div>
-
       </div>
     </div>
   );
@@ -202,7 +179,6 @@ const LibraryPanel = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in pb-20">
-      
       {!isCreating && !editingId && (
         <div className="flex justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm mb-6">
           <div>
@@ -235,9 +211,7 @@ const LibraryPanel = () => {
                     <button onClick={() => actions.deleteActivity(act.id)} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 bg-secondary rounded-lg transition-colors"><Trash2 size={14}/></button>
                   </div>
                 </div>
-                
                 <h3 className="font-bold text-foreground text-lg leading-tight mb-3">{act.name}</h3>
-                
                 <div className="flex flex-wrap gap-2 mt-auto">
                   <span className="flex items-center gap-1 bg-secondary border border-border px-2 py-1 rounded-md text-[10px] font-bold text-muted-foreground uppercase"><CalendarClock size={10} /> {act.rules?.frequency || 1}x/sem</span>
                   <span className="flex items-center gap-1 bg-secondary border border-border px-2 py-1 rounded-md text-[10px] font-bold text-muted-foreground uppercase"><List size={10} /> {act.defaultTasks?.length || 0} Tarefas</span>
