@@ -21,29 +21,23 @@ const SHIFT_ICONS = {
 
 // --- Sub-componente: Item de Tarefa ---
 const TaskItem = ({ task, onToggle, onDelete }) => (
-  <div 
-    className="flex items-center gap-3 group bg-background/50 dark:bg-black/20 p-2 rounded-lg border border-border dark:border-white/5 hover:border-primary/50 transition-colors" 
-    onClick={(e) => e.stopPropagation()} 
-  >
+  <div className="flex items-start gap-3 group bg-secondary/50 p-2.5 rounded-lg border border-border hover:border-primary/50 transition-colors" onClick={(e) => e.stopPropagation()}>
     <motion.button 
       whileTap={{ scale: 0.8 }}
-      onClick={onToggle}
-      aria-label="Toggle task"
-      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-        task.completed ? 'bg-green-500 border-green-500' : 'border-border dark:border-white/30'
-      }`}
+      onClick={onToggle} 
+      className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${task.completed ? 'bg-green-500 border-green-500' : 'border-border hover:border-primary bg-background'}`}
     >
-      {task.completed && <Check size={12} className="text-white dark:text-black" strokeWidth={3} />}
+      {task.completed && <Check size={12} className="text-white" strokeWidth={3} />}
     </motion.button>
-    <span className={`text-xs font-medium flex-1 ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+    <span className={`text-xs font-medium flex-1 transition-all pt-0.5 ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
       {task.text}
     </span>
+    {/* A CORREÇÃO DA LIXEIRA AQUI: stopPropagation e área de clique maior */}
     <button 
-      onClick={onDelete} 
-      aria-label="Delete task"
-      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+      onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all shrink-0"
     >
-      <X size={14} />
+      <Trash2 size={14} />
     </button>
   </div>
 );
