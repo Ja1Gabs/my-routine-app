@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
 import { ptBR, enUS } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Image as ImageIcon, Sun, CloudSun, MoonStar, CheckSquare, X, PlaySquare, Trash2, Rocket, Code2, Coffee, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Image as ImageIcon, Sun, CloudSun, MoonStar, CheckSquare, X, PlaySquare, Rocket, Code2, Coffee, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
@@ -18,8 +18,6 @@ const SHIFT_LABELS = { morning: 'Manhã', afternoon: 'Tarde', night: 'Noite', de
 
 // --- CARD ARQUIVADO (GRAVAÇÃO) ---
 const ArchivedCard = ({ record, shift }) => {
-  const { t } = useRoutine();
-  // Puxa a "foto" da atividade que salvamos no contexto
   const activity = record.activity || { name: "Atividade Encerrada", theme: "slate", iconName: "Archive" };
   const theme = THEMES[activity.theme] || THEMES.slate;
   const Icon = ICON_MAP[activity.iconName] || Rocket;
@@ -76,9 +74,9 @@ const ArchivedCard = ({ record, shift }) => {
         )}
 
         {record.image && (
-           <div className="bg-secondary/80 p-3 rounded-xl border border-border">
+           <div className="bg-secondary/80 p-3 rounded-xl border border-border mt-4">
              <label className="text-[9px] uppercase text-muted-foreground font-black mb-2 flex items-center gap-1"><ImageIcon size={10}/> Anexo</label>
-             <img src={record.image} className="w-full h-32 object-cover rounded-lg border border-border shadow-sm" alt="Record" />
+             <img src={record.image} className="w-full h-40 object-cover rounded-lg border border-border shadow-sm" alt="Record" />
            </div>
         )}
       </div>
@@ -92,10 +90,11 @@ const HistoryPanel = ({ completedDays = {} }) => {
   const { t, config, history } = useRoutine();
   const today = new Date();
   
-  const[viewingMonth, setViewingMonth] = useState(startOfMonth(today));
+  const [viewingMonth, setViewingMonth] = useState(startOfMonth(today));
   
-  // A MÁGICA DO MULTI-SELECT
-  const [selectedDates, setSelectedDates] = useState([]);
+  // Estados para Multi-select e Modal
+  const[selectedDates, setSelectedDates] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const currentMonthStart = startOfMonth(viewingMonth);
   const currentMonthEnd = endOfMonth(viewingMonth);
@@ -110,9 +109,9 @@ const HistoryPanel = ({ completedDays = {} }) => {
     setSelectedDates(prev => prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr]);
   };
 
-  // Coleta todas as gravações dos dias selecionados
+  // Coleta as gravações dos dias selecionados
   const getSelectedRecordings = () => {
-    const shifts = ['morning', 'afternoon', 'night', 'default'];
+    const shifts =['morning', 'afternoon', 'night', 'default'];
     let recordings = {};
 
     selectedDates.forEach(dateStr => {
@@ -124,18 +123,17 @@ const HistoryPanel = ({ completedDays = {} }) => {
         }
       });
     });
-    return recordings; // Formato: { "2026-03-10":[ {shift: 'morning', ...} ] }
+    return recordings;
   };
 
   const recordings = getSelectedRecordings();
-  const sortedSelectedDates = [...selectedDates].sort(); // Ordena cronologicamente
+  const sortedSelectedDates = [...selectedDates].sort();
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-5xl mx-auto pb-20">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto pb-32">
       
       {/* CALENDÁRIO */}
       <div className="p-6 rounded-3xl border border-border bg-card shadow-sm">
-        
         <div className="flex items-center justify-between mb-6 px-2">
           <button onClick={() => setViewingMonth(subMonths(viewingMonth, 1))} className="p-2 bg-secondary hover:bg-border rounded-xl text-muted-foreground hover:text-foreground transition-all">
             <ChevronLeft size={20} />
@@ -172,7 +170,7 @@ const HistoryPanel = ({ completedDays = {} }) => {
                   hover:scale-105 active:scale-95
                   ${isSelected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background z-10' : 'border border-transparent'}
                   ${isCompleted 
-                    ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/20' 
+                    ? 'bg-green-500/20 text-green-600 dark:text-green-500 border-green-500/20' 
                     : 'bg-secondary text-foreground hover:bg-border'
                   }
                   ${isCurrentDay && !isCompleted && !isSelected ? 'bg-primary/10 text-primary border-primary/20' : ''}
@@ -185,62 +183,119 @@ const HistoryPanel = ({ completedDays = {} }) => {
           })}
         </div>
 
-        {/* Header Extra para Multi-Select */}
-        <div className="flex justify-between items-center mt-6 pt-4 border-t border-border px-2">
-           <div className="text-xs font-bold text-muted-foreground">
-             <span className="text-foreground">{selectedDates.length}</span> dias selecionados
-           </div>
-           {selectedDates.length > 0 && (
-             <button onClick={() => setSelectedDates([])} className="text-[10px] uppercase font-bold text-destructive hover:text-destructive/80 transition-colors">
-               Limpar Seleção
-             </button>
-           )}
+        <div className="flex gap-4 mt-6 text-xs text-muted-foreground px-2">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-green-500/20 border border-green-500/50"></div> {t('completedLegend')}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-secondary border border-border"></div> {t('registeredLegend')}
+          </div>
         </div>
       </div>
 
-      {/* A LINHA DO TEMPO (GRAVAÇÕES DE CÂMERA) */}
+      {/* BARRA FLUTUANTE DE AÇÃO (Quando dias são selecionados) */}
       <AnimatePresence>
-        {selectedDates.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-            className="bg-card border border-border p-6 rounded-3xl shadow-xl"
+        {selectedDates.length > 0 && !isModalOpen && (
+          <motion.div
+            initial={{ y: 100, opacity: 0, x: "-50%" }}
+            animate={{ y: 0, opacity: 1, x: "-50%" }}
+            exit={{ y: 100, opacity: 0, x: "-50%" }}
+            className="fixed bottom-8 left-1/2 z-40 bg-foreground text-background px-3 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-border"
           >
-            <div className="flex items-center gap-3 mb-8 border-b border-border pb-4">
-              <div className="p-3 bg-red-500/10 text-red-500 rounded-xl animate-pulse"><PlaySquare size={24} /></div>
-              <div>
-                <h3 className="text-xl font-black text-foreground">Arquivo de Rotina</h3>
-                <p className="text-xs text-muted-foreground">Revendo gravações selecionadas</p>
+            <div className="flex items-center gap-2 pl-2">
+              <div className="bg-background text-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-black">
+                {selectedDates.length}
               </div>
+              <span className="text-xs font-bold hidden sm:inline">selecionados</span>
             </div>
+            
+            <div className="w-px h-6 bg-background/20 hidden sm:block"></div>
+            
+            <button 
+              onClick={() => setIsModalOpen(true)} 
+              className="flex items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+            >
+              <PlaySquare size={14} className="text-red-500" /> Puxar Gravações
+            </button>
+            
+            <button 
+              onClick={() => setSelectedDates([])} 
+              className="p-2 hover:bg-background/20 rounded-xl transition-colors text-background/70 hover:text-background"
+              title="Limpar seleção"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="space-y-12 relative">
-              {/* Linha vertical que conecta os dias (Estilo Timeline) */}
-              <div className="absolute left-[19px] top-4 bottom-4 w-1 bg-border rounded-full z-0 hidden md:block"></div>
-
-              {sortedSelectedDates.map(dateStr => {
-                const dayRecords = recordings[dateStr];
-
-                return (
-                  <div key={dateStr} className="relative z-10 md:pl-12">
-                    {/* Bolinha da Timeline */}
-                    <div className="absolute left-[15px] top-1.5 w-3 h-3 bg-primary rounded-full ring-4 ring-background hidden md:block"></div>
-                    
-                    <h4 className="text-lg font-black text-foreground mb-4 uppercase tracking-tight flex items-center gap-2">
-                       {format(parseISO(dateStr), "EEEE, dd 'de' MMM", { locale: dateLocale })}
-                       {dayRecords.length === 0 && <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-1 rounded-md font-bold">Sem Registros</span>}
-                    </h4>
-
-                    {dayRecords.length > 0 && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {dayRecords.map((rec, i) => (
-                          <ArchivedCard key={i} record={rec} shift={rec.shift} />
-                        ))}
-                      </div>
-                    )}
+      {/* O MODAL DE VIDRO (ARQUIVO DE GRAVAÇÕES) */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-md"
+            onClick={() => setIsModalOpen(false)} // Clicar no fundo fecha
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()} // Clicar dentro não fecha
+              className="w-full max-w-4xl max-h-[85vh] bg-card border border-border rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            >
+              {/* Header do Modal */}
+              <div className="flex justify-between items-center p-6 border-b border-border bg-secondary/30 relative z-20">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-red-500/10 text-red-500 rounded-xl animate-pulse shadow-inner border border-red-500/20">
+                    <PlaySquare size={20} />
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <h3 className="text-xl font-black text-foreground tracking-tight">Arquivo de Rotina</h3>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{selectedDates.length} dias recuperados</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-background border border-border hover:bg-border rounded-full text-muted-foreground hover:text-foreground transition-colors active:scale-95">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Corpo do Modal (Rolável) */}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-background/30 relative">
+                
+                <div className="space-y-12 relative z-10">
+                  {/* Linha vertical da Timeline */}
+                  <div className="absolute left-[19px] top-6 bottom-6 w-1 bg-border rounded-full z-0 hidden md:block"></div>
+
+                  {sortedSelectedDates.map(dateStr => {
+                    const dayRecords = recordings[dateStr];
+
+                    return (
+                      <div key={dateStr} className="relative z-10 md:pl-12">
+                        {/* Bolinha da Timeline */}
+                        <div className="absolute left-[15px] top-2 w-3 h-3 bg-primary rounded-full ring-4 ring-card hidden md:block"></div>
+                        
+                        <h4 className="text-lg font-black text-foreground mb-4 uppercase tracking-tight flex items-center gap-3">
+                          {format(parseISO(dateStr), "EEEE, dd 'de' MMM", { locale: dateLocale })}
+                          {dayRecords.length === 0 && <span className="text-[10px] bg-secondary border border-border text-muted-foreground px-2 py-1 rounded-md font-bold">Sem Registros Salvos</span>}
+                        </h4>
+
+                        {dayRecords.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {dayRecords.map((rec, i) => (
+                              <ArchivedCard key={i} record={rec} shift={rec.shift} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
