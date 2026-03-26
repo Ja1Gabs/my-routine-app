@@ -279,6 +279,21 @@ export const RoutineProvider = ({ children }) => {
     } catch (e) { return { success: false, error: e.message }; }
   };
 
+  const register = async (name, email, password) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return login(email, password);
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   // --- ESTATÍSTICAS ---
   const completedDays = useMemo(() => {
     const shifts = config.routineMode === 'shifts' && config.activeShifts?.length > 0 ? config.activeShifts : ['default'];
@@ -299,6 +314,7 @@ export const RoutineProvider = ({ children }) => {
       user, config, t, isServerWaking, isShuffling, currentWeek, activitiesPool, history, goals, canvasNodes, completedDays, stats,
       actions: {
         login, 
+        register, 
         logout: () => { localStorage.clear(); window.location.reload(); }, 
         saveActivity: (act) => act.id ? setActivitiesPool(p => p.map(a => a.id === act.id ? act : a)) : setActivitiesPool(p => [...p, { ...act, id: crypto.randomUUID() }]),
         deleteActivity: (id) => setActivitiesPool(p => p.filter(a => a.id !== id)),
