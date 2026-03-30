@@ -333,11 +333,25 @@ export const RoutineProvider = ({ children }) => {
         deleteActivity: (id) => setActivitiesPool(p => p.filter(a => a.id !== id)),
         triggerShuffle,
         toggleComplete, 
-        updateDayData, 
-        addCanvasNode: (act) => setCanvasNodes(p => [...p, { id: crypto.randomUUID(), activityId: act.id, x: 100, y: 100, tasks: act.defaultTasks?.map(t=>({id: crypto.randomUUID(), text: t, completed: false})) || [] }]),
-        updateCanvasNodePos: (id, x, y) => setCanvasNodes(p => p.map(n => n.id === id ? { ...n, x, y } : n)),
-        updateCanvasNodeData: (id, data) => setCanvasNodes(p => p.map(n => n.id === id ? { ...n, ...data } : n)),
-        deleteCanvasNode: (id) => setCanvasNodes(p => p.filter(n => n.id !== id)),
+        updateDayData,
+        // --- ACTIONS: QUADRO LIVRE (CANVAS MULTI-NODE) ---
+        addCanvasNode: (act) => setCanvasNodes(prev => [...prev, { 
+          id: crypto.randomUUID(), type: 'activity', activityId: act.id, 
+          x: Math.random() * 100 + 50, y: Math.random() * 100 + 50, 
+          tasks: act.defaultTasks?.map(t => ({ id: crypto.randomUUID(), text: t, completed: false })) || [] 
+        }]),
+        addStickyNode: () => setCanvasNodes(prev => [...prev, {
+          id: crypto.randomUUID(), type: 'sticky', text: '',
+          x: Math.random() * 100 + 50, y: Math.random() * 100 + 50,
+          color: ['bg-yellow-200/90 text-yellow-900', 'bg-blue-200/90 text-blue-900', 'bg-pink-200/90 text-pink-900', 'bg-emerald-200/90 text-emerald-900'][Math.floor(Math.random() * 4)]
+        }]),
+        addImageNode: () => setCanvasNodes(prev => [...prev, {
+          id: crypto.randomUUID(), type: 'image', url: '',
+          x: Math.random() * 100 + 50, y: Math.random() * 100 + 50
+        }]),
+        updateCanvasNodePos: (id, x, y) => setCanvasNodes(prev => prev.map(n => n.id === id ? { ...n, x, y } : n)),
+        updateCanvasNodeData: (id, data) => setCanvasNodes(prev => prev.map(n => n.id === id ? { ...n, ...data } : n)),
+        deleteCanvasNode: (id) => setCanvasNodes(prev => prev.filter(n => n.id !== id)),
         setConfig, addGoal: (g) => setGoals(p => [...p, { ...g, id: crypto.randomUUID(), current: 0 }]),
         incrementGoal: (id) => setGoals(p => p.map(g => (g.id === id && g.type === 'manual') ? { ...g, current: Math.min(g.current + 1, g.target) } : g)),
         deleteGoal: (id) => setGoals(p => p.filter(g => g.id !== id))

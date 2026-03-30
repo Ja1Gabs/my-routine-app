@@ -35,9 +35,9 @@ const LoginScreen = () => {
             <Sparkles />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            {isRegister ? t('Create Account') : t('Welcome Back')}
+            {isRegister ? t('createAccount') : t('welcomeBack')}
           </h1>
-          <p className="text-muted-foreground text-sm mt-2">{t('Enter To Manage')}</p>
+          <p className="text-muted-foreground text-sm mt-2">{t('enterToManage')}</p>
         </div>
 
         {error && (
@@ -100,7 +100,7 @@ const LoginScreen = () => {
             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
           >
             {isRegister ? <LogIn size={14} /> : <UserPlus size={14} />}
-            {isRegister ? t('Have Account') : t('New Account')}
+            {isRegister ? t('haveAccount') : t('newAccount')}
           </button>
         </div>
       </div>

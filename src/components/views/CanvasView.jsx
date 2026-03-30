@@ -1,174 +1,187 @@
-import React, { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Check, GripHorizontal, Maximize2, Minimize2, Trash2 } from 'lucide-react';
+import React, { useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, X, Check, GripHorizontal, Trash2, StickyNote, Image as ImageIcon, CopyPlus, Rocket, Code2, Coffee, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
-import { Code2, Coffee, Rocket, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase } from 'lucide-react';
 
 const ICON_MAP = { Code2, Coffee, Rocket, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase };
 
-// --- CARD ARRASTÁVEL ---
-const CanvasCard = ({ node, constraintsRef }) => {
-  const { activitiesPool, actions, t } = useRoutine();
-  const [expanded, setExpanded] = useState(false);
-  const [newTask, setNewTask] = useState("");
-
-  // Busca as configurações visuais baseadas no activityId original
-  const activity = activitiesPool.find(a => a.id === node.activityId);
-  if (!activity) return null; // Se a atividade for deletada da biblioteca, o card some ou pode ter um fallback
-
-  const theme = THEMES[activity.theme] || THEMES.slate;
-  const Icon = ICON_MAP[activity.iconName] || Rocket;
-
-  const handleDragEnd = (event, info) => {
-    // Atualiza a posição no estado (para salvar ao sair)
-    actions.updateCanvasNodePos(node.id, node.x + info.offset.x, node.y + info.offset.y);
-  };
-
-  const toggleTask = (taskId) => {
-    const newTasks = node.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
-    actions.updateCanvasNodeData(node.id, { tasks: newTasks });
-  };
-
-  const addTask = () => {
-    if (!newTask.trim()) return;
-    const t = { id: crypto.randomUUID(), text: newTask, completed: false };
-    actions.updateCanvasNodeData(node.id, { tasks:[...node.tasks, t] });
-    setNewTask("");
-  };
+// 1. COMPONENTE: POST-IT (KANBAN / INBOX)
+const StickyNode = ({ node, constraintsRef, actions }) => {
+  const handleDragEnd = (e, info) => actions.updateCanvasNodePos(node.id, node.x + info.offset.x, node.y + info.offset.y);
 
   return (
     <motion.div
-      drag
-      dragMomentum={false}
-      dragConstraints={constraintsRef}
-      onDragEnd={handleDragEnd}
-      initial={{ x: node.x, y: node.y, scale: 0 }}
-      animate={{ scale: 1 }}
-      className={`absolute z-10 w-72 rounded-2xl border shadow-xl flex flex-col overflow-hidden backdrop-blur-md transition-shadow hover:shadow-2xl ${theme.card}`}
-      // style para forçar o framer motion a iniciar no lugar certo na tela
+      drag dragMomentum={false} dragConstraints={constraintsRef} onDragEnd={handleDragEnd}
+      initial={{ scale: 0 }} animate={{ scale: 1 }}
       style={{ x: node.x, y: node.y }}
+      className={`absolute z-20 w-48 h-48 rounded-xl shadow-xl flex flex-col overflow-hidden transition-shadow hover:shadow-2xl ${node.color} border border-black/10`}
     >
-      {/* HEADER (Area de Arrastar) */}
-      <div className={`cursor-grab active:cursor-grabbing p-3 flex justify-between items-center border-b border-border bg-background/50`}>
-        <div className="flex items-center gap-2">
-          <GripHorizontal size={14} className="text-muted-foreground opacity-50" />
-          <div className={`w-6 h-6 rounded-md flex items-center justify-center ${theme.iconBox} text-xs`}>
-            {activity.emoji ? activity.emoji : <Icon size={12} />}
-          </div>
-          <span className={`text-sm font-bold ${theme.title}`}>{activity.name}</span>
-        </div>
-        
-        <div className="flex gap-1">
-          <button onClick={() => setExpanded(!expanded)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
-            {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
-          <button onClick={() => actions.deleteCanvasNode(node.id)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
-            <Trash2 size={14} />
-          </button>
-        </div>
+      <div className="h-6 bg-black/10 cursor-grab active:cursor-grabbing flex justify-between items-center px-2 group">
+        <GripHorizontal size={12} className="opacity-50" />
+        <button onClick={() => actions.deleteCanvasNode(node.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity">
+          <X size={12} />
+        </button>
+      </div>
+      <textarea 
+        className="flex-1 w-full bg-transparent p-3 outline-none resize-none font-medium placeholder:text-black/30"
+        placeholder="Escreva uma ideia ou tarefa rápida..."
+        value={node.text || ''}
+        onChange={(e) => actions.updateCanvasNodeData(node.id, { text: e.target.value })}
+        onPointerDownCapture={(e) => e.stopPropagation()}
+      />
+    </motion.div>
+  );
+};
+
+// 2. COMPONENTE: IMAGEM (VISION BOARD)
+const ImageNode = ({ node, constraintsRef, actions, t }) => {
+  const handleDragEnd = (e, info) => actions.updateCanvasNodePos(node.id, node.x + info.offset.x, node.y + info.offset.y);
+
+  return (
+    <motion.div
+      drag dragMomentum={false} dragConstraints={constraintsRef} onDragEnd={handleDragEnd}
+      initial={{ scale: 0 }} animate={{ scale: 1 }}
+      style={{ x: node.x, y: node.y }}
+      className="absolute z-10 w-64 rounded-2xl shadow-xl bg-card border border-border flex flex-col overflow-hidden group"
+    >
+      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="cursor-grab active:cursor-grabbing p-1.5 bg-black/50 text-white rounded-lg backdrop-blur-sm"><GripHorizontal size={14}/></div>
+        <button onClick={() => actions.deleteCanvasNode(node.id)} className="p-1.5 bg-red-500/80 text-white rounded-lg backdrop-blur-sm hover:bg-red-600"><Trash2 size={14} /></button>
       </div>
 
-      {/* CONTEÚDO (Tarefas rápidas) */}
-      <div className="p-4" onPointerDownCapture={(e) => e.stopPropagation()}>
-        {/* Parar a propagação do clique aqui evita arrastar o card quando tenta clicar num input ou botão */}
-        
-        {/* Progress Bar Mini */}
-        {node.tasks.length > 0 && (
-          <div className="h-1 w-full bg-secondary rounded-full overflow-hidden mb-4">
-            <div className="h-full bg-primary/70 transition-all" style={{ width: `${(node.tasks.filter(t=>t.completed).length / node.tasks.length) * 100}%` }}/>
-          </div>
-        )}
+      {node.url ? (
+        <img src={node.url} alt="Vision" className="w-full h-auto min-h-[100px] object-cover pointer-events-none" />
+      ) : (
+        <div className="p-4" onPointerDownCapture={e => e.stopPropagation()}>
+          <div className="flex items-center gap-2 text-muted-foreground mb-2"><ImageIcon size={16}/> <span className="text-xs font-bold">URL da Imagem</span></div>
+          <input 
+            className="w-full bg-secondary border border-border rounded-lg p-2 text-xs text-foreground outline-none focus:border-primary"
+            placeholder={t('imagePlaceholder')}
+            value={node.url || ''}
+            onChange={(e) => actions.updateCanvasNodeData(node.id, { url: e.target.value })}
+          />
+        </div>
+      )}
+    </motion.div>
+  );
+};
 
-        <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+// 3. COMPONENTE: CARTA DE ROTINA (HABIT STACKING)
+const ActivityNode = ({ node, constraintsRef, actions }) => {
+  const { activitiesPool } = useRoutine();
+  const activity = activitiesPool.find(a => a.id === node.activityId);
+  
+  if (!activity) return null;
+  const theme = THEMES[activity.theme] || THEMES.slate;
+  const Icon = ICON_MAP[activity.iconName] || Rocket;
+
+  const handleDragEnd = (e, info) => actions.updateCanvasNodePos(node.id, node.x + info.offset.x, node.y + info.offset.y);
+  const toggleTask = (taskId) => actions.updateCanvasNodeData(node.id, { tasks: node.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t) });
+
+  return (
+    <motion.div
+      drag dragMomentum={false} dragConstraints={constraintsRef} onDragEnd={handleDragEnd}
+      initial={{ scale: 0 }} animate={{ scale: 1 }}
+      style={{ x: node.x, y: node.y }}
+      className={`absolute z-30 w-56 rounded-2xl border shadow-xl flex flex-col overflow-hidden backdrop-blur-md transition-shadow hover:shadow-2xl ${theme.card}`}
+    >
+      <div className="cursor-grab active:cursor-grabbing p-3 flex justify-between items-center border-b border-border bg-background/50">
+        <div className="flex items-center gap-2">
+          <GripHorizontal size={14} className="text-muted-foreground opacity-50" />
+          <div className={`w-6 h-6 rounded-md flex items-center justify-center ${theme.iconBox} text-xs border border-border`}>
+            {activity.emoji ? activity.emoji : <Icon size={12} strokeWidth={2.5}/>}
+          </div>
+          <span className={`text-xs font-bold ${theme.title} truncate`}>{activity.name}</span>
+        </div>
+        <button onClick={() => actions.deleteCanvasNode(node.id)} className="p-1 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"><X size={14} /></button>
+      </div>
+
+      {node.tasks && node.tasks.length > 0 && (
+        <div className="p-3 space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar bg-background/30" onPointerDownCapture={e => e.stopPropagation()}>
           {node.tasks.map(task => (
             <div key={task.id} className="flex items-start gap-2 group">
-              <button onClick={() => toggleTask(task.id)} className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${task.completed ? 'bg-green-500 border-green-500 text-white' : 'border-border hover:border-primary'}`}>
-                {task.completed && <Check size={10} strokeWidth={3} />}
+              <button onClick={() => toggleTask(task.id)} className={`mt-0.5 w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-all ${task.completed ? 'bg-green-500 border-green-500 text-white' : 'border-border hover:border-primary'}`}>
+                {task.completed && <Check size={8} strokeWidth={4} />}
               </button>
-              <span className={`text-xs flex-1 transition-all ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                {task.text}
-              </span>
+              <span className={`text-[10px] font-medium leading-tight pt-0.5 transition-all ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{task.text}</span>
             </div>
           ))}
         </div>
-
-        {/* Expansão com Input */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="pt-3 border-t border-border mt-3 overflow-hidden">
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder={t('taskPlaceholder')}
-                  className={theme.input + " h-8 rounded-md px-3 text-xs outline-none flex-1 w-full"} 
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addTask()}
-                />
-                <button onClick={addTask} className={theme.actionButton + " w-8 h-8 shrink-0 rounded-md flex items-center justify-center"}>
-                  <Plus size={14} />
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      )}
     </motion.div>
   );
 };
 
 
-// --- O QUADRO (CANVAS) ---
+// =========================================
+// O QUADRO PRINCIPAL (CANVAS)
+// =========================================
 const CanvasView = () => {
   const { activitiesPool, canvasNodes, actions, t } = useRoutine();
   const constraintsRef = useRef(null);
 
+  const safeNodes = Array.isArray(canvasNodes) ? canvasNodes : [];
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
       
-      {/* Menu Superior de Ações */}
-      <div className="flex justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm">
+      {/* Header Informativo */}
+      <div className="flex justify-between items-center px-2">
         <div>
-          <h2 className="font-bold text-foreground">{t('board')}</h2>
+          <h2 className="font-bold text-foreground text-xl">{t('board')}</h2>
           <p className="text-xs text-muted-foreground">{t('boardDesc')}</p>
-        </div>
-
-        {/* Dropdown simples para adicionar no quadro */}
-        <div className="flex gap-2 items-center">
-           <span className="text-xs font-bold uppercase text-muted-foreground">{t('addNode')}:</span>
-           <div className="flex gap-2 overflow-x-auto max-w-[40vw] custom-scrollbar pb-1">
-             {activitiesPool.map(act => (
-               <button 
-                 key={act.id} 
-                 onClick={() => actions.addCanvasNode(act)}
-                 className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground border border-border rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95"
-               >
-                 {act.emoji ? act.emoji : <Code2 size={12} />}
-                 {act.name}
-               </button>
-             ))}
-           </div>
         </div>
       </div>
 
       {/* A ÁREA DO QUADRO (Fundo Pontilhado) */}
       <div 
         ref={constraintsRef} 
-        className="w-full h-[65vh] bg-background border border-border rounded-3xl relative overflow-hidden bg-dots shadow-inner"
+        className="w-full h-[65vh] bg-card border border-border rounded-3xl relative overflow-hidden bg-dots shadow-inner"
       >
-        {/* Renderiza todos os nodes jogados no quadro */}
-        {canvasNodes.map(node => (
-          <CanvasCard key={node.id} node={node} constraintsRef={constraintsRef} />
-        ))}
+        {safeNodes.map(node => {
+          const type = node.type || 'activity';
+          if (type === 'sticky') return <StickyNode key={node.id} node={node} constraintsRef={constraintsRef} actions={actions} />;
+          if (type === 'image') return <ImageNode key={node.id} node={node} constraintsRef={constraintsRef} actions={actions} t={t} />;
+          return <ActivityNode key={node.id} node={node} constraintsRef={constraintsRef} actions={actions} />;
+        })}
 
-        {canvasNodes.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground opacity-50 pointer-events-none">
-             <GripHorizontal size={48} className="mb-4" />
-             <p className="font-bold">Seu quadro está vazio.</p>
-             <p className="text-xs">Clique nas atividades acima para jogar cards na tela.</p>
+        {safeNodes.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground opacity-40 pointer-events-none">
+             <CopyPlus size={48} className="mb-4" strokeWidth={1} />
+             <p className="font-bold">Seu espaço está em branco.</p>
+             <p className="text-xs">Use o menu abaixo para criar seu mural.</p>
           </div>
         )}
+
+        {/* --- O DOCK FLUTUANTE (Toolbar estilo Mac) --- */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-xl border border-border p-2 rounded-2xl shadow-2xl flex items-center gap-2">
+           
+           <button onClick={() => actions.addStickyNode()} className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground rounded-xl text-xs font-bold transition-all active:scale-95 group">
+             <StickyNote size={14} className="text-yellow-500 group-hover:text-primary-foreground" /> {t('addSticky')}
+           </button>
+           
+           <button onClick={() => actions.addImageNode()} className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground rounded-xl text-xs font-bold transition-all active:scale-95 group">
+             <ImageIcon size={14} className="text-blue-500 group-hover:text-primary-foreground" /> {t('addImage')}
+           </button>
+
+           <div className="w-px h-6 bg-border mx-1"></div>
+
+           {/* Dropdown de Cartas da Biblioteca */}
+           <div className="flex gap-2 max-w-[40vw] overflow-x-auto custom-scrollbar px-1">
+             {activitiesPool.map(act => (
+               <button 
+                 key={act.id} 
+                 onClick={() => actions.addCanvasNode(act)}
+                 title={t('addCard')}
+                 className="shrink-0 w-8 h-8 flex items-center justify-center bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground border border-border rounded-xl transition-all active:scale-95 shadow-sm"
+               >
+                 {act.emoji ? <span className="text-xs">{act.emoji}</span> : <Code2 size={14} />}
+               </button>
+             ))}
+           </div>
+
+        </div>
       </div>
     </div>
   );

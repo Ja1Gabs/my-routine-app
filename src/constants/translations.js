@@ -15,6 +15,9 @@ export const TRANSLATIONS = {
     wakingServerDesc: "Como usamos um plano gratuito, isso pode levar cerca de 1 minuto. Pegue um café! ☕",
     
     // Auth & Tabs
+    welcomeBack: "Bem-Vindo de Volta",
+    createAccount: "Criar Conta",
+    enterToManage: "Digite para gerenciar",
     week: "Semana",
     library: "Biblioteca",
     goals: "Metas",
@@ -22,6 +25,13 @@ export const TRANSLATIONS = {
     history: "Histórico",
     config: "Configurações",
     online: "Online",
+    name: "NOME",
+    email: "EMAIL",
+    password: "SENHA",
+    register: "registrar",
+    enter: "entrar",
+    haveAccount: "Já tem uma conta?",
+    newAccount: "Criar nova conta",
 
     // Goals Panel (Com Metas Sugeridas)
     myGoals: "Meus Objetivos",
@@ -70,9 +80,13 @@ export const TRANSLATIONS = {
     proofImage: "Imagem anexada",
     
     //Quadro livre
-    board: "Quadro Livre",
-    boardDesc: "Arraste e organize suas atividades livremente",
+    board: "Espaço (Sandbox)",
+    boardDesc: "Quadro livre para Rituais, Kanban e Vision Board",
     addNode: "Adicionar ao Quadro",
+    addSticky: "Novo Post-it",
+    addImage: "Nova Imagem",
+    addCard: "Puxar Carta",
+    imagePlaceholder: "Cole a URL da imagem aqui...",
     dragMe: "Arraste-me",
     // Day Card
     today: "HOJE",
@@ -155,6 +169,9 @@ export const TRANSLATIONS = {
     wakingServerDesc: "Since we use a free plan, this might take about a minute. Grab a coffee! ☕",
     
     // Auth & Tabs
+    welcomeBack: "Welcome Back",
+    createAccount: "Create Account",
+    enterToManage: "Enter to manage",
     week: "Week",
     library: "Library",
     goals: "Goals",
@@ -162,6 +179,13 @@ export const TRANSLATIONS = {
     history: "History",
     config: "Settings",
     online: "Online",
+    name: "NAME",
+    email: "EMAIL",
+    password: "PASSWORD",
+    register: "register",
+    enter: "enter",
+    haveAccount: "Already have an account?",
+    newAccount: "New account",
 
     // Goals Panel (With Suggested Goals)
     myGoals: "My Goals",
@@ -216,9 +240,13 @@ export const TRANSLATIONS = {
     proofImage: "Attached image",
 
     //Freeboard
-    board: "Freeboard",
-    boardDesc: "Drag and organize your activities freely",
+    board: "Workspace (Sandbox)",
+    boardDesc: "Free board for Rituals, Kanban, and Vision Board",
     addNode: "Add to Board",
+    addSticky: "New Sticky Note",
+    addImage: "New Image",
+    addCard: "Pull Card",
+    imagePlaceholder: "Paste image URL here...",
     dragMe: "Drag me",
     // Day Card
     today: "TODAY",
