@@ -27,6 +27,7 @@ export const RoutineProvider = ({ children }) => {
   const [canvasNodes, setCanvasNodes] = useState([]);
   const [isServerWaking, setIsServerWaking] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // TRAVA DE SEGURANÇA CONTRA BUGS DE RELOAD
 
   const [config, setConfig] = useState(() => {
     try {
@@ -96,6 +97,7 @@ export const RoutineProvider = ({ children }) => {
       if (didWeekChange && currentConfig.autoShuffle) {
         setTimeout(() => executeShuffle(dataLocal.activities || [], currentConfig), 800);
       }
+      setIsDataLoaded(true); // Libera o salvamento após carregar dados
       isFirstLoad.current = false;
     };
     initApp();
@@ -110,7 +112,7 @@ export const RoutineProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (isFirstLoad.current) return;
+    if (isFirstLoad.current || !isDataLoaded) return; // Só salva se já terminou de ler o banco
     const db = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes };
     localStorage.setItem('routine_db_v11', JSON.stringify(db));
     if (token) {
@@ -123,7 +125,7 @@ export const RoutineProvider = ({ children }) => {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, token]);
+  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, token, isDataLoaded]);
 
   // --- ACTIONS DE HISTÓRICO (COM SNAPSHOT/FOTO DA ATIVIDADE) ---
   const updateDayData = (dateStr, shiftKey, newData, activitySnapshot) => {

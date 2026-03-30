@@ -32,14 +32,14 @@ export default function Home() {
 
   return (  
     <div 
-      className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans transition-colors duration-300 bg-cover bg-center bg-fixed relative"
+      className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300 bg-cover bg-center bg-fixed"
       style={{ 
-        backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : 'none' 
+        backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : undefined 
       }}
     >
       {/* Overlay de contraste: Ativado apenas quando há imagem de fundo configurada */}
       {config.backgroundImage && (
-        <div className="fixed inset-0 z-0 pointer-events-none bg-white/70 dark:bg-black/80 backdrop-blur-sm transition-colors duration-300" />
+        <div className="fixed inset-0 bg-background/80 dark:bg-black/80 z-0 pointer-events-none backdrop-blur-[2px]" />
       )}
 
       {/* --- OVERLAY DE HIBERNAÇÃO (O SEGREDO PREMIUM) --- */}
@@ -67,73 +67,57 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-7xl mx-auto relative z-10 px-4 md:px-8 pb-24 md:pb-8 pt-4">
         
         {/* HEADER: Info do Usuário e Título */}
-        <header className="text-center mb-10 pt-4">
-          <div className="flex items-center justify-center gap-3 mb-4">
+        <header className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-2">
              <div className="flex -space-x-2">
                <img 
-                 src={user.avatar || 'https://via.placeholder.com/150'} 
-                 className="w-8 h-8 rounded-full border-2 border-primary/30 object-cover shadow-lg" 
+                 src={user.avatar} 
+                 className="w-6 h-6 rounded-full border border-border" 
                  alt="Avatar"
                />
              </div>
-             <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-1.5">
-               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                {t('online')} • {user.name}
              </p>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground drop-shadow-md">
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">
             {t('appTitle')}
           </h1>
           
-          <p className="text-muted-foreground text-sm md:text-base font-bold mt-2 opacity-80">
+          <p className="text-muted-foreground text-sm md:text-base font-medium mt-1">
             {t('appSubtitle')}
           </p>
         </header>
 
-        {/* NAVEGAÇÃO: Menu de Abas (Glassmorphism adaptável) */}
-        <nav className="flex justify-center mb-10 px-2 md:px-0">
-          <div className="bg-card/60 backdrop-blur-xl border border-border p-1.5 rounded-2xl flex w-full max-w-4xl shadow-lg overflow-x-auto gap-1 no-scrollbar">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex-1 min-w-[100px] py-3.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 whitespace-nowrap uppercase tracking-wider
-                    ${isActive 
-                      ? 'bg-primary text-primary-foreground shadow-md scale-[1.02] translate-y-[-1px]' 
-                      : 'text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
-                    }
-                  `}
-                >
-                  <tab.icon 
-                    size={16} 
-                    strokeWidth={isActive ? 3 : 2} 
-                    className={isActive ? 'text-primary-foreground' : 'text-muted-foreground'} 
-                  />
-                  {t(tab.label)}
-                </button>
-              );
-            })}
+        {/* NAVEGAÇÃO DESKTOP (Invisível no Celular) */}
+        <nav className="hidden md:flex justify-center mb-10">
+          <div className="bg-card border border-border p-1.5 rounded-2xl flex w-full max-w-4xl shadow-sm overflow-x-auto gap-1 no-scrollbar">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex-1 min-w-[90px] py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap
+                  ${activeTab === tab.id 
+                    ? 'bg-primary text-primary-foreground shadow-md' 
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }
+                `}
+              >
+                <tab.icon size={16} className={activeTab === tab.id ? 'text-primary-foreground' : 'text-muted-foreground'} />
+                {t(tab.label)}
+              </button>
+            ))}
           </div>
         </nav>
 
-        {/* CONTEÚDO PRINCIPAL: Renderização Condicional com Framer Motion */}
-        <main className="pb-10">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-            >
-              {/* Painéis puxam seus dados diretamente do Contexto */}
+        <main>
+          <AnimatePresence mode='wait'>
+            <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
               {activeTab === 'week' && <WeekView />}
               {activeTab === 'board' && <CanvasView />}
               {activeTab === 'library' && <LibraryPanel />}
@@ -144,8 +128,29 @@ export default function Home() {
             </motion.div>
           </AnimatePresence>
         </main>
-
       </div>
+
+      {/* NAVEGAÇÃO MOBILE (Invisível no Desktop, Fixa embaixo no Celular) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+        <div className="flex justify-between items-center px-2 py-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all
+                ${activeTab === tab.id ? 'text-primary' : 'text-muted-foreground hover:bg-secondary/50'}
+              `}
+            >
+              <tab.icon size={20} className={activeTab === tab.id ? 'fill-primary/20' : ''} />
+              <span className={`text-[9px] font-bold ${activeTab === tab.id ? 'opacity-100' : 'opacity-0 h-0'} transition-all`}>
+                {t(tab.label)}
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
     </div>
   );
 }

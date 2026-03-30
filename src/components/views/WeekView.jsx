@@ -64,8 +64,9 @@ const WeekView = () => {
   };
 
   const currentLocale = config.lang === 'en' ? enUS : ptBR;
-  const shufflesLeft = config.maxShuffles > 0 ? config.maxShuffles - (config.shufflesUsed || 0) : -1;
-  const isOutOfShuffles = shufflesLeft === 0;
+  // CORREÇÃO DA MATEMÁTICA NEGATIVA
+  const shufflesLeft = config.maxShuffles > 0 ? Math.max(0, config.maxShuffles - (config.shufflesUsed || 0)) : -1;
+  const isOutOfShuffles = config.maxShuffles > 0 && shufflesLeft === 0;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 overflow-hidden">
