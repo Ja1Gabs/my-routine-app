@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { 
   format, 
   subDays, 
@@ -16,32 +16,51 @@ export const useRoutine = () => useContext(RoutineContext);
 const API_URL = import.meta.env.VITE_API_URL || "https://my-routine-app-jxx7.onrender.com";
 const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
 
+// ✅ Função auxiliar para ler o banco de dados de forma síncrona (PRÉ-RENDERIZAÇÃO)
+const getLocalDB = () => {
+  try { return JSON.parse(localStorage.getItem('routine_db_v11')) || {}; } 
+  catch(e) { return {}; }
+};
+
+const getLocalUser = () => {
+  try { return JSON.parse(localStorage.getItem('routine_user')) || null; } 
+  catch(e) { return null; }
+};
+
 export const RoutineProvider = ({ children }) => {
-  // --- ESTADOS ---
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('auth_token'));
-  const [activitiesPool, setActivitiesPool] = useState([]);
-  const [currentWeek, setCurrentWeek] = useState(() => Array.from({ length: 7 }, () => ({}))); 
-  const [history, setHistory] = useState({}); 
-  const [goals, setGoals] = useState([]);
-  const [canvasNodes, setCanvasNodes] = useState([]);
+  // =========================================================
+  // ✅ LAZY INITIALIZATION: Lê o banco ANTES de renderizar
+  // Isso resolve o piscar do login e a perda de dados no F5!
+  // =========================================================
+  
+  const [user, setUser] = useState(getLocalUser);
+  const [token, setToken] = useState(() => localStorage.getItem('auth_token') || null);
+  
+  const [activitiesPool, setActivitiesPool] = useState(() => getLocalDB().activities || []);
+  const [currentWeek, setCurrentWeek] = useState(() => getLocalDB().currentWeek || Array.from({ length: 7 }, () => ({}))); 
+  const [history, setHistory] = useState(() => getLocalDB().history || {}); 
+  const [goals, setGoals] = useState(() => getLocalDB().goals || []);
+  const [canvasNodes, setCanvasNodes] = useState(() => getLocalDB().canvasNodes || []);
+  
   const [isServerWaking, setIsServerWaking] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(false); // TRAVA DE SEGURANÇA CONTRA BUGS DE RELOAD
 
   const [config, setConfig] = useState(() => {
-    try {
-      const data = JSON.parse(localStorage.getItem('routine_db_v11') || '{}'); 
-      if (data.config) return data.config;
-    } catch (e) {}
+    const savedConfig = getLocalDB().config || {};
     return { 
-      theme: 'dark', sundayMode: 'pause', lang: 'pt', routineMode: 'simple', 
-      activeShifts: ['default'], autoShuffle: true, maxShuffles: 3, 
-      shufflesUsed: 0, lastWeekStart: '' 
+      theme: 'dark', 
+      sundayMode: 'pause', 
+      lang: 'pt', 
+      routineMode: 'simple', 
+      activeShifts: ['default'], 
+      autoShuffle: true, 
+      maxShuffles: 3, 
+      shufflesUsed: 0, 
+      lastWeekStart: '',
+      backgroundImage: '',
+      ...savedConfig // Mescla o padrão com o que estava salvo
     };
   });
-
-  const isFirstLoad = useRef(true);
   const t = (key) => TRANSLATIONS[config.lang || 'pt'][key] || key;
 
   // --- TEMA ---
@@ -51,72 +70,64 @@ export const RoutineProvider = ({ children }) => {
     if (config.theme === 'dark') root.classList.add('dark');
   }, [config.theme]);
 
-  // --- INICIALIZAÇÃO E SINCRONIZAÇÃO ---
+  // ✅ SINCRONIZAÇÃO COM SERVIDOR (Fetch de dados atualizado)
   useEffect(() => {
-    const initApp = async () => {
-      const savedUser = JSON.parse(localStorage.getItem('routine_user'));
-      const dataLocal = JSON.parse(localStorage.getItem('routine_db_v11') || '{}');
-      let currentConfig = dataLocal.config || config;
-      
-      const todayStartOfWeek = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      let didWeekChange = false;
+    if (!user || !token) return;
 
-      if (currentConfig.lastWeekStart !== todayStartOfWeek) {
-        currentConfig = { ...currentConfig, shufflesUsed: 0, lastWeekStart: todayStartOfWeek };
-        setConfig(currentConfig);
-        didWeekChange = true;
-      }
-
-      if (savedUser && token) {
-        setUser(savedUser);
-        const wakeTimer = setTimeout(() => setIsServerWaking(true), 2500);
-        try {
-          const res = await fetch(`${API_URL}/data`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          clearTimeout(wakeTimer);
-          setIsServerWaking(false);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.activities) setActivitiesPool(data.activities);
-            if (data.currentWeek && !didWeekChange) setCurrentWeek(data.currentWeek);
-            if (data.history) setHistory(data.history);
-            if (data.goals) setGoals(data.goals);
-            if (data.canvasNodes) setCanvasNodes(data.canvasNodes);
-            setConfig(prev => ({ ...prev, ...(data.config || {}) }));
-          }
-        } catch (error) {
-          clearTimeout(wakeTimer);
-          setIsServerWaking(false);
-          loadLocalBackup(dataLocal, didWeekChange);
+    const syncWithServer = async () => {
+      const wakeTimer = setTimeout(() => setIsServerWaking(true), 2500);
+      try {
+        const res = await fetch(`${API_URL}/data`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        clearTimeout(wakeTimer);
+        setIsServerWaking(false);
+        
+        if (res.ok) {
+          const data = await res.json();
+          if (data.activities) setActivitiesPool(data.activities);
+          if (data.currentWeek) setCurrentWeek(data.currentWeek);
+          if (data.history) setHistory(data.history);
+          if (data.goals) setGoals(data.goals);
+          if (data.canvasNodes) setCanvasNodes(data.canvasNodes);
+          if (data.config) setConfig(prev => ({ ...prev, ...data.config }));
         }
-      } else {
-        loadLocalBackup(dataLocal, didWeekChange);
+      } catch (error) {
+        clearTimeout(wakeTimer);
+        setIsServerWaking(false);
       }
-
-      if (didWeekChange && currentConfig.autoShuffle) {
-        setTimeout(() => executeShuffle(dataLocal.activities || [], currentConfig), 800);
-      }
-      setIsDataLoaded(true); // Libera o salvamento após carregar dados
-      isFirstLoad.current = false;
     };
-    initApp();
-  }, [token]);
+    syncWithServer();
+  }, [token, user]);
 
-  const loadLocalBackup = (dataLocal, didWeekChange) => {
-    if (dataLocal.activities) setActivitiesPool(dataLocal.activities);
-    if (dataLocal.currentWeek && !didWeekChange) setCurrentWeek(dataLocal.currentWeek);
-    if (dataLocal.history) setHistory(dataLocal.history);
-    if (dataLocal.goals) setGoals(dataLocal.goals);
-    if (dataLocal.canvasNodes) setCanvasNodes(dataLocal.canvasNodes);
-  };
-
+  // ✅ VERIFICA VIRADA DE SEMANA apenas UMA VEZ ao carregar o app
   useEffect(() => {
-    if (isFirstLoad.current || !isDataLoaded) return; // Só salva se já terminou de ler o banco
-    const db = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes };
-    localStorage.setItem('routine_db_v11', JSON.stringify(db));
+    if (!user) return; // Só checa se estiver logado
+
+    const currentWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    
+    if (!config.lastWeekStart) {
+      setConfig(prev => ({ ...prev, lastWeekStart: currentWeekStart }));
+    } else if (config.lastWeekStart !== currentWeekStart) {
+      // A SEMANA VIROU DE VERDADE!
+      setConfig(prev => ({ ...prev, shufflesUsed: 0, lastWeekStart: currentWeekStart }));
+      
+      if (config.autoShuffle) {
+        setTimeout(() => executeShuffle(activitiesPool, config), 500);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Array vazio = roda só no primeiro carregamento (Evita loop de F5)
+
+  // ✅ AUTO-SAVE: Salva no localStorage sempre que algo mudar
+  useEffect(() => {
+    if (user) {
+      const db = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes };
+      localStorage.setItem('routine_db_v11', JSON.stringify(db));
+    }
     if (token) {
       const timer = setTimeout(() => {
+        const db = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes };
         fetch(`${API_URL}/data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -125,7 +136,7 @@ export const RoutineProvider = ({ children }) => {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, token, isDataLoaded]);
+  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, user, token]);
 
   // --- ACTIONS DE HISTÓRICO (COM SNAPSHOT/FOTO DA ATIVIDADE) ---
   const updateDayData = (dateStr, shiftKey, newData, activitySnapshot) => {
