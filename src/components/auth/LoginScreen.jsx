@@ -8,11 +8,17 @@ const LoginScreen = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showWakeNotice, setShowWakeNotice] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setShowWakeNotice(false);
+
+    const wakeTimer = setTimeout(() => {
+      setShowWakeNotice(true);
+    }, 1800);
 
     let result;
     if (isRegister) {
@@ -21,7 +27,9 @@ const LoginScreen = () => {
       result = await actions.login(formData.email, formData.password);
     }
 
+    clearTimeout(wakeTimer);
     setLoading(false);
+    setShowWakeNotice(false);
     if (!result.success) {
       setError(result.error || 'Ocorreu um erro.');
     }
@@ -77,6 +85,12 @@ const LoginScreen = () => {
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-500 text-xs font-bold">
               <AlertCircle size={16} /> {error}
+            </div>
+          )}
+
+          {loading && showWakeNotice && (
+            <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 dark:text-amber-200 light:text-amber-700 text-xs font-semibold leading-relaxed">
+              O servidor pode estar iniciando no Render gratuito. Isso costuma levar alguns segundos na primeira tentativa.
             </div>
           )}
 
