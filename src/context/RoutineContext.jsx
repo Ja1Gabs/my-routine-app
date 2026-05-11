@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { format, subDays, startOfWeek, addDays, isBefore, isSameDay, startOfToday, parseISO } from 'date-fns';
 import { TRANSLATIONS } from '../constants/translations';
 import {
@@ -50,6 +50,7 @@ const normalizeConfig = (savedConfig = {}) => ({
   maxShuffles: 3,
   shufflesUsed: 0,
   lastWeekStart: '',
+  lastAutoShuffleWeek: '',
   backgroundImage: '',
   maxActivitiesPerSlot: 2,
   ...savedConfig,
@@ -71,6 +72,10 @@ export const RoutineProvider = ({ children }) => {
   const [isServerWaking, setIsServerWaking] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
   const [config, setConfig] = useState(initialConfig);
+  const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false);
+  const lastChangeAtRef = useRef(db.meta?.updatedAt || null);
+  const skipNextTouchRef = useRef(false);
+  const hasCheckedWeekRef = useRef(false);
 
   const t = (key) => TRANSLATIONS[config.lang || 'pt'][key] || key;
 
@@ -98,8 +103,20 @@ export const RoutineProvider = ({ children }) => {
 
         if (res.ok) {
           const data = await res.json();
+          const localDb = getLocalDB();
+          const serverUpdatedAt = Date.parse(data?.meta?.updatedAt || 0) || 0;
+          const localUpdatedAt = Date.parse(localDb?.meta?.updatedAt || 0) || 0;
+          const shouldUseServer = serverUpdatedAt > localUpdatedAt;
+
+          if (!shouldUseServer) {
+            setHasCompletedInitialSync(true);
+            return;
+          }
+
           const nextConfig = normalizeConfig(data.config || config);
           const nextShifts = getConfiguredShifts(nextConfig);
+          skipNextTouchRef.current = true;
+          lastChangeAtRef.current = data?.meta?.updatedAt || lastChangeAtRef.current;
           if (data.activities) setActivitiesPool(data.activities);
           if (data.currentWeek) setCurrentWeek(normalizeWeekData(data.currentWeek, nextShifts));
           if (data.history) setHistory(data.history);
@@ -111,6 +128,8 @@ export const RoutineProvider = ({ children }) => {
       } catch (error) {
         clearTimeout(wakeTimer);
         setIsServerWaking(false);
+      } finally {
+        setHasCompletedInitialSync(true);
       }
     };
 
@@ -118,37 +137,88 @@ export const RoutineProvider = ({ children }) => {
   }, [token, user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !hasCompletedInitialSync || hasCheckedWeekRef.current) return;
+    hasCheckedWeekRef.current = true;
 
     const currentWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const weekHasAnyActivities = currentWeek.some((day) =>
+      Object.values(day || {}).some((slot) => Array.isArray(slot) && slot.length > 0),
+    );
+
     if (!config.lastWeekStart) {
-      setConfig((prev) => ({ ...prev, lastWeekStart: currentWeekStart }));
+      setConfig((prev) => ({
+        ...prev,
+        lastWeekStart: currentWeekStart,
+        ...(weekHasAnyActivities ? { lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart } : {}),
+      }));
     } else if (config.lastWeekStart !== currentWeekStart) {
-      setConfig((prev) => ({ ...prev, shufflesUsed: 0, lastWeekStart: currentWeekStart }));
-      if (config.autoShuffle) {
-        setTimeout(() => executeShuffle(activitiesPool, config), 500);
+      const alreadyPreparedThisWeek = config.lastAutoShuffleWeek === currentWeekStart || weekHasAnyActivities;
+      setConfig((prev) => ({
+        ...prev,
+        shufflesUsed: 0,
+        lastWeekStart: currentWeekStart,
+        ...(alreadyPreparedThisWeek ? { lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart } : {}),
+      }));
+
+      if (config.autoShuffle && !alreadyPreparedThisWeek) {
+        setTimeout(() => {
+          executeShuffle(activitiesPool, { ...config, lastAutoShuffleWeek: currentWeekStart });
+          setConfig((prev) => ({
+            ...prev,
+            shufflesUsed: 0,
+            lastWeekStart: currentWeekStart,
+            lastAutoShuffleWeek: currentWeekStart,
+          }));
+        }, 500);
       }
     }
-  }, []);
+  }, [user, hasCompletedInitialSync, config, currentWeek, activitiesPool]);
+
+  useEffect(() => {
+    if (!hasCompletedInitialSync) return;
+    if (skipNextTouchRef.current) {
+      skipNextTouchRef.current = false;
+      return;
+    }
+    lastChangeAtRef.current = new Date().toISOString();
+  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards, hasCompletedInitialSync]);
 
   useEffect(() => {
     if (user) {
-      const nextDb = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards };
+      const nextDb = {
+        activities: activitiesPool,
+        currentWeek,
+        history,
+        goals,
+        config,
+        canvasNodes,
+        cycleCards,
+        meta: { updatedAt: lastChangeAtRef.current || new Date().toISOString() },
+      };
       localStorage.setItem(DB_KEY, JSON.stringify(nextDb));
     }
 
-    if (token) {
+    if (token && hasCompletedInitialSync) {
       const timer = setTimeout(() => {
-        const nextDb = { activities: activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards };
+        const nextDb = {
+          activities: activitiesPool,
+          currentWeek,
+          history,
+          goals,
+          config,
+          canvasNodes,
+          cycleCards,
+          meta: { updatedAt: lastChangeAtRef.current || new Date().toISOString() },
+        };
         fetch(`${API_URL}/data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(nextDb),
         }).catch(() => {});
-      }, 3000);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards, user, token]);
+  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards, user, token, hasCompletedInitialSync]);
 
   const updateDayData = (dateStr, shiftKey, activityId, newData, activitySnapshot) => {
     const key = buildHistoryKey(dateStr, shiftKey, activityId);
@@ -191,7 +261,6 @@ export const RoutineProvider = ({ children }) => {
 
     const today = new Date();
     const todayDateOnly = startOfToday();
-    const currentHour = today.getHours();
     const startOfCurrentWeek = startOfWeek(todayDateOnly, { weekStartsOn: 1 });
 
     const weekPlan = Array.from({ length: 7 }, (_, i) => {
@@ -201,13 +270,9 @@ export const RoutineProvider = ({ children }) => {
       const dayObj = {};
 
       targetShifts.forEach((shift) => {
-        let isPastShift = isPastDay;
-        if (isTodayDate && activeConfig.routineMode === 'shifts') {
-          if (shift === 'morning' && currentHour >= 12) isPastShift = true;
-          if (shift === 'afternoon' && currentHour >= 18) isPastShift = true;
-        }
+        const shouldPreserveSlot = isPastDay || isTodayDate;
 
-        dayObj[shift] = isPastShift
+        dayObj[shift] = shouldPreserveSlot
           ? (currentWeek?.[i]?.[shift] || []).slice()
           : [];
       });
@@ -314,7 +379,13 @@ export const RoutineProvider = ({ children }) => {
     setIsShuffling(true);
     await new Promise((resolve) => setTimeout(resolve, 400));
     executeShuffle();
-    setConfig((prev) => ({ ...prev, shufflesUsed: (prev.shufflesUsed || 0) + 1 }));
+    const currentWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    setConfig((prev) => ({
+      ...prev,
+      shufflesUsed: (prev.shufflesUsed || 0) + 1,
+      lastWeekStart: currentWeekStart,
+      lastAutoShuffleWeek: currentWeekStart,
+    }));
     setIsShuffling(false);
   };
 
