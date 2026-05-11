@@ -232,3 +232,27 @@ body::after {
   background-image: radial-gradient(color-mix(in srgb, var(--muted-foreground) 24%, transparent) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+.sticky-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+.sticky-scrollbar::-webkit-scrollbar {
+  width: 7px;
+}
+
+.sticky-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sticky-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.sticky-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
