@@ -51,6 +51,7 @@ const normalizeConfig = (savedConfig = {}) => ({
   shufflesUsed: 0,
   lastWeekStart: '',
   lastAutoShuffleWeek: '',
+  plannedWeekStart: '',
   backgroundImage: '',
   maxActivitiesPerSlot: 2,
   ...savedConfig,
@@ -149,15 +150,31 @@ export const RoutineProvider = ({ children }) => {
       setConfig((prev) => ({
         ...prev,
         lastWeekStart: currentWeekStart,
-        ...(weekHasAnyActivities ? { lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart } : {}),
+        ...(weekHasAnyActivities
+          ? {
+              lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart,
+              plannedWeekStart: prev.plannedWeekStart || currentWeekStart,
+            }
+          : {}),
       }));
     } else if (config.lastWeekStart !== currentWeekStart) {
-      const alreadyPreparedThisWeek = config.lastAutoShuffleWeek === currentWeekStart || weekHasAnyActivities;
+      const alreadyPreparedThisWeek =
+        config.plannedWeekStart === currentWeekStart ||
+        config.lastAutoShuffleWeek === currentWeekStart ||
+        weekHasAnyActivities;
+
       setConfig((prev) => ({
         ...prev,
         shufflesUsed: 0,
         lastWeekStart: currentWeekStart,
-        ...(alreadyPreparedThisWeek ? { lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart } : {}),
+        ...(alreadyPreparedThisWeek
+          ? {
+              lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart,
+              plannedWeekStart: prev.plannedWeekStart || currentWeekStart,
+            }
+          : {
+              plannedWeekStart: '',
+            }),
       }));
 
       if (config.autoShuffle && !alreadyPreparedThisWeek) {
@@ -168,6 +185,7 @@ export const RoutineProvider = ({ children }) => {
             shufflesUsed: 0,
             lastWeekStart: currentWeekStart,
             lastAutoShuffleWeek: currentWeekStart,
+            plannedWeekStart: currentWeekStart,
           }));
         }, 500);
       }
@@ -385,6 +403,7 @@ export const RoutineProvider = ({ children }) => {
       shufflesUsed: (prev.shufflesUsed || 0) + 1,
       lastWeekStart: currentWeekStart,
       lastAutoShuffleWeek: currentWeekStart,
+      plannedWeekStart: currentWeekStart,
     }));
     setIsShuffling(false);
   };
