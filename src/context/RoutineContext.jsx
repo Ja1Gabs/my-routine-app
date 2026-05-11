@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { format, subDays, startOfWeek, addDays, isBefore, isSameDay, startOfToday } from 'date-fns';
+import { format, subDays, startOfWeek, addDays, isBefore, isSameDay, startOfToday, parseISO } from 'date-fns';
 import { TRANSLATIONS } from '../constants/translations';
 import {
   buildEmptyWeek,
@@ -373,7 +373,7 @@ export const RoutineProvider = ({ children }) => {
     const weekStarts = {};
     Object.keys(completedDays).forEach((dateStr) => {
       if (!completedDays[dateStr]) return;
-      const weekStart = format(startOfWeek(new Date(dateStr), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      const weekStart = format(startOfWeek(parseISO(dateStr), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       weekStarts[weekStart] = weekStarts[weekStart] || [];
       weekStarts[weekStart].push(dateStr);
     });
@@ -387,6 +387,16 @@ export const RoutineProvider = ({ children }) => {
     };
   }, [completedDays, history]);
 
+  const resolvedGoals = useMemo(() => {
+    return goals.map((goal) => {
+      if (goal.type === 'manual') return goal;
+      if (goal.type === 'streak') return { ...goal, current: stats.daily };
+      if (goal.type === 'total_activities') return { ...goal, current: stats.total };
+      if (goal.type === 'perfect_weeks') return { ...goal, current: stats.weekly };
+      return goal;
+    });
+  }, [goals, stats]);
+
   return (
     <RoutineContext.Provider
       value={{
@@ -398,7 +408,7 @@ export const RoutineProvider = ({ children }) => {
         currentWeek,
         activitiesPool,
         history,
-        goals,
+        goals: resolvedGoals,
         canvasNodes,
         cycleCards,
         completedDays,
