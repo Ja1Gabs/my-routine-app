@@ -135,9 +135,9 @@ const CanvasView = () => {
       </div>
 
       {/* A ÁREA DO QUADRO (Fundo Pontilhado) */}
-      <div 
-        ref={constraintsRef} 
-        className="w-full h-[65vh] bg-card border border-border rounded-3xl relative overflow-hidden bg-dots shadow-inner"
+      <div
+        ref={constraintsRef}
+        className="w-full h-[78vh] min-h-[620px] bg-card border border-border rounded-3xl relative overflow-hidden bg-dots shadow-inner"
       >
         {safeNodes.map(node => {
           const type = node.type || 'activity';
@@ -155,7 +155,7 @@ const CanvasView = () => {
         )}
 
         {/* --- O DOCK FLUTUANTE (Toolbar estilo Mac) --- */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-xl border border-border p-2 rounded-2xl shadow-2xl flex items-center gap-2">
+        <div className="absolute bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 bg-background/85 backdrop-blur-xl border border-border p-2 rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-2 max-w-[calc(100%-2rem)] md:max-w-[90%]">
            
            <button onClick={() => actions.addStickyNode()} className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground rounded-xl text-xs font-bold transition-all active:scale-95 group">
              <StickyNote size={14} className="text-yellow-500 group-hover:text-primary-foreground" /> {t('addSticky')}
@@ -165,10 +165,10 @@ const CanvasView = () => {
              <ImageIcon size={14} className="text-blue-500 group-hover:text-primary-foreground" /> {t('addImage')}
            </button>
 
-           <div className="w-px h-6 bg-border mx-1"></div>
+           <div className="hidden md:block w-px h-6 bg-border mx-1"></div>
 
            {/* Dropdown de Cartas da Biblioteca */}
-           <div className="flex gap-2 max-w-[40vw] overflow-x-auto custom-scrollbar px-1">
+           <div className="flex gap-2 max-w-full md:max-w-[42vw] overflow-x-auto custom-scrollbar px-1">
              {activitiesPool.map(act => (
                <button 
                  key={act.id} 

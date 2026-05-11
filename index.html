@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo-my-routine.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Minha Rotina</title>
     
@@ -10,7 +10,7 @@
     <script>
       (function() {
         try {
-          const data = JSON.parse(localStorage.getItem('routine_db_v10') || '{}');
+          const data = JSON.parse(localStorage.getItem('routine_db_v12') || localStorage.getItem('routine_db_v11') || localStorage.getItem('routine_db_v10') || '{}');
           const theme = data.config?.theme || 'dark';
           document.documentElement.classList.remove('light', 'dark');
           document.documentElement.classList.add(theme);

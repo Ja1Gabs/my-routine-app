@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Image as ImageIcon, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
+import { listHistoryEntriesForDate } from '../../lib/routine';
 
 const ICON_MAP = { Code2, Coffee, Rocket, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase };
 
@@ -111,17 +112,12 @@ const HistoryPanel = ({ completedDays = {} }) => {
 
   // Coleta as gravações dos dias selecionados
   const getSelectedRecordings = () => {
-    const shifts =['morning', 'afternoon', 'night', 'default'];
     let recordings = {};
 
     selectedDates.forEach(dateStr => {
-      recordings[dateStr] =[];
-      shifts.forEach(shift => {
-        const key = `${dateStr}_${shift}`;
-        if (history[key] && (history[key].completed || history[key].notes || history[key].image || (history[key].tasks && history[key].tasks.length > 0))) {
-          recordings[dateStr].push({ shift, ...history[key] });
-        }
-      });
+      recordings[dateStr] = listHistoryEntriesForDate(history, dateStr)
+        .filter(({ value }) => value?.completed || value?.notes || value?.image || (value?.tasks && value.tasks.length > 0))
+        .map(({ shiftKey, value }) => ({ shift: shiftKey, ...value }));
     });
     return recordings;
   };
