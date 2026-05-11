@@ -42,10 +42,39 @@ const WeekView = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
+    const canScrollElement = (element, deltaY) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(element);
+      const overflowY = style.overflowY;
+      const isScrollableY = overflowY === 'auto' || overflowY === 'scroll';
+      if (!isScrollableY || element.scrollHeight <= element.clientHeight) return false;
+
+      if (deltaY < 0) return element.scrollTop > 0;
+      if (deltaY > 0) return element.scrollTop + element.clientHeight < element.scrollHeight;
+      return false;
+    };
+
+    const findScrollableParent = (target, deltaY) => {
+      let node = target instanceof HTMLElement ? target : null;
+      while (node && node !== container) {
+        if (canScrollElement(node, deltaY)) return node;
+        node = node.parentElement;
+      }
+      return null;
+    };
+
     const handleWheel = (e) => {
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const scrollableParent = findScrollableParent(e.target, e.deltaY);
+      if (scrollableParent) return;
+
+      const horizontalDelta = e.shiftKey
+        ? (Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY)
+        : (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY);
+
+      if (horizontalDelta === 0) return;
+
       e.preventDefault();
-      container.scrollLeft += e.deltaY;
+      container.scrollLeft += horizontalDelta;
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
