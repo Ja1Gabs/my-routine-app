@@ -1,56 +1,114 @@
 @import 'tailwindcss';
 
 :root {
-  /* DARK MODE (Preto Profundo) - Padr�o */
-  --background: #0a0a0a;
-  --foreground: #ffffff;
-  --card: #121212;
-  --border: #27272a;
-  --primary: #ffffff;
-  --primary-foreground: #000000;
-  --secondary: #1e1e20;
-  --secondary-foreground: #ffffff;
-  --muted: #1e1e20;
-  --muted-foreground: #a1a1aa;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --ring: #ffffff;
+  --background: #07111f;
+  --background-elevated: #0d1728;
+  --foreground: #f6f2ea;
+  --card: rgba(12, 22, 37, 0.72);
+  --card-solid: #101d31;
+  --border: rgba(160, 185, 218, 0.16);
+  --primary: #f5ede0;
+  --primary-foreground: #132238;
+  --secondary: rgba(255, 255, 255, 0.055);
+  --secondary-foreground: #f6f2ea;
+  --muted: rgba(255, 255, 255, 0.035);
+  --muted-foreground: #96a8c3;
+  --destructive: #f15d63;
+  --destructive-foreground: #fff6f7;
+  --ring: rgba(244, 191, 120, 0.48);
+  --glow-a: rgba(74, 149, 255, 0.22);
+  --glow-b: rgba(255, 145, 112, 0.18);
+  --glow-c: rgba(255, 221, 146, 0.12);
 }
 
 :root.light {
-  /* LIGHT MODE (Branco Absoluto) */
-  --background: #ffffff;
-  --foreground: #000000;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --primary: #000000;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #000000;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --ring: #000000;
+  --background: #f6f1e8;
+  --background-elevated: #fffaf3;
+  --foreground: #1c2431;
+  --card: rgba(255, 252, 246, 0.82);
+  --card-solid: #fffaf3;
+  --border: rgba(24, 39, 61, 0.1);
+  --primary: #1d2e49;
+  --primary-foreground: #f8f3ea;
+  --secondary: rgba(29, 46, 73, 0.055);
+  --secondary-foreground: #1d2e49;
+  --muted: rgba(29, 46, 73, 0.035);
+  --muted-foreground: #627089;
+  --destructive: #d94d59;
+  --destructive-foreground: #fff7f8;
+  --ring: rgba(35, 116, 225, 0.22);
+  --glow-a: rgba(89, 142, 233, 0.14);
+  --glow-b: rgba(250, 146, 103, 0.14);
+  --glow-c: rgba(243, 194, 94, 0.1);
 }
 
 html {
-  background-color: var(--background);
+  background:
+    radial-gradient(circle at 20% 18%, var(--glow-a), transparent 26%),
+    radial-gradient(circle at 82% 14%, var(--glow-b), transparent 24%),
+    radial-gradient(circle at 54% 100%, var(--glow-c), transparent 30%),
+    var(--background);
   color: var(--foreground);
+  min-height: 100%;
 }
 
 body {
-  background-color: var(--background);
+  min-height: 100vh;
+  background: transparent;
   color: var(--foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  letter-spacing: -0.01em;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.06), transparent 42%);
+  opacity: 0.85;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at center, black 48%, transparent 100%);
+  opacity: 0.35;
+  z-index: 0;
+}
+
+.light body::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), transparent 18%),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.4), transparent 42%);
+}
+
+.light body::after {
+  background-image:
+    linear-gradient(rgba(24, 39, 61, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 39, 61, 0.03) 1px, transparent 1px);
 }
 
 * {
   border-color: var(--border);
 }
 
-/* Core color utilities */
+::selection {
+  background: rgba(244, 191, 120, 0.28);
+  color: var(--foreground);
+}
+
 .bg-background {
   background-color: var(--background) !important;
 }
@@ -83,7 +141,56 @@ body {
   color: var(--primary-foreground) !important;
 }
 
-/* SCROLLBAR */
+.premium-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 24px 80px rgba(5, 10, 18, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(135%);
+}
+
+.light .premium-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.56));
+  box-shadow:
+    0 18px 60px rgba(36, 49, 72, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.premium-tile {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 16px 40px rgba(5, 10, 18, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.light .premium-tile {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
+  border-color: rgba(29, 46, 73, 0.08);
+  box-shadow:
+    0 14px 32px rgba(36, 49, 72, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.eyebrow {
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.hero-title {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  letter-spacing: -0.04em;
+}
+
+.soft-divider {
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   height: 8px;
   width: 8px;
@@ -122,6 +229,6 @@ body {
 }
 
 .bg-dots {
-  background-image: radial-gradient(color-mix(in srgb, var(--muted-foreground) 22%, transparent) 1px, transparent 1px);
+  background-image: radial-gradient(color-mix(in srgb, var(--muted-foreground) 24%, transparent) 1px, transparent 1px);
   background-size: 24px 24px;
 }

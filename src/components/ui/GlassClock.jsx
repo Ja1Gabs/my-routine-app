@@ -14,7 +14,8 @@ const GlassClock = () => {
   const hoursDegrees = (time.getHours() % 12) * 30 + (time.getMinutes() * 0.5);
 
   return (
-    <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-border/50 bg-secondary/30 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] flex items-center justify-center">
+    <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-white/10 bg-white/6 backdrop-blur-2xl shadow-[0_20px_45px_rgba(0,0,0,0.18)] flex items-center justify-center overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_70%_80%,rgba(255,179,102,0.12),transparent_35%)]" />
       
       {/* Marcadores das horas (3, 6, 9, 12) */}
       <div className="absolute top-2 w-1 h-1.5 rounded bg-muted-foreground/50"></div>
@@ -44,7 +45,7 @@ const GlassClock = () => {
       />
 
       {/* Relógio Digital com Vidro */}
-      <div className="absolute top-1/2 mt-5 bg-background/80 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-black text-foreground border border-border/50 shadow-sm z-30 tracking-widest">
+      <div className="absolute top-1/2 mt-5 bg-background/82 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-black text-foreground border border-white/10 shadow-sm z-30 tracking-widest">
         {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>

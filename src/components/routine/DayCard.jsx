@@ -157,11 +157,12 @@ const DayCard = ({
       onClick={onToggleExpand}
       className={`relative rounded-2xl border p-4 flex flex-col overflow-hidden transition-all cursor-pointer group
         ${theme.card}
-        ${isExpanded ? 'shadow-2xl z-20 ring-2 ring-primary/30' : 'min-h-44 hover:shadow-lg hover:-translate-y-1'}
+        ${isExpanded ? 'shadow-2xl z-20 ring-2 ring-primary/30' : 'min-h-44 hover:shadow-[0_20px_45px_rgba(0,0,0,0.16)] hover:-translate-y-1'}
         ${isCompleted && !isExpanded ? 'opacity-70 grayscale-[0.3]' : ''}
         ${isUrgent && !isExpanded ? 'ring-2 ring-orange-500/80 shadow-orange-500/20 animate-pulse' : ''}
       `}
     >
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_24%)] opacity-80 pointer-events-none" />
       {dayImage && !isExpanded && (
         <div className="absolute inset-0 z-0">
           <img src={dayImage} alt="" className="w-full h-full object-cover opacity-20 mix-blend-overlay" />
@@ -189,7 +190,7 @@ const DayCard = ({
         </div>
       </div>
 
-      <h2 className={`text-xl font-bold mb-auto tracking-tight relative z-10 ${theme.title} ${isCompleted ? 'line-through decoration-muted-foreground' : ''}`}>
+      <h2 className={`text-[1.3rem] font-bold mb-auto tracking-tight relative z-10 ${theme.title} ${isCompleted ? 'line-through decoration-muted-foreground' : ''}`}>
         {activity.name}
       </h2>
 

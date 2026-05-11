@@ -74,27 +74,37 @@ const WeekView = () => {
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 md:gap-16">
+      <div className="premium-panel rounded-[2rem] px-5 py-6 md:px-8 md:py-7">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12">
         <div className="flex-shrink-0 animate-in zoom-in-90 duration-500 delay-100 hidden sm:block">
           <GlassClock />
         </div>
 
-        <div className="flex flex-col items-center gap-2">
+          <div className="flex-1 text-center lg:text-left">
+            <p className="eyebrow text-muted-foreground mb-2">Planejamento da semana</p>
+            <h2 className="hero-title text-3xl md:text-4xl text-foreground leading-none">Uma semana desenhada para continuar coerente.</h2>
+            <p className="text-sm md:text-base text-muted-foreground mt-3 max-w-2xl">
+              Veja o que ja esta definido, o que ainda pede energia e o que vale preservar para nao quebrar seu ritmo.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
           <button
             onClick={() => actions.triggerShuffle()}
             disabled={isShuffling || isOutOfShuffles}
-            className={`px-8 py-3 rounded-full flex items-center gap-3 text-sm font-bold shadow-lg transition-all active:scale-95 ${isShuffling || isOutOfShuffles ? 'bg-secondary text-muted-foreground cursor-not-allowed border border-border shadow-none' : 'bg-primary hover:opacity-90 text-primary-foreground shadow-primary/20'}`}
+            className={`px-8 py-3 rounded-full flex items-center gap-3 text-sm font-bold shadow-lg transition-all active:scale-95 ${isShuffling || isOutOfShuffles ? 'bg-secondary text-muted-foreground cursor-not-allowed border border-border shadow-none' : 'bg-primary hover:opacity-90 text-primary-foreground shadow-[0_18px_35px_rgba(0,0,0,0.16)]'}`}
           >
             <Shuffle size={18} className={isShuffling ? 'animate-spin' : 'opacity-80'} />
             {isOutOfShuffles ? t('outOfShuffles') : t('shuffle')}
           </button>
 
           {config.maxShuffles > 0 && (
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-1 rounded-md border border-border">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-1 rounded-full border border-border">
               {shufflesLeft} {t('shufflesLeft')}
             </span>
           )}
         </div>
+      </div>
       </div>
 
       <div ref={scrollContainerRef} className="custom-scrollbar flex overflow-x-auto pb-10 pt-4 snap-x snap-mandatory gap-6 px-4 scroll-smooth">
@@ -112,13 +122,13 @@ const WeekView = () => {
                   initial={{ opacity: 0, x: 50, scale: 0.9 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25, delay: index * 0.05 }}
-                  className={`min-w-[320px] w-[320px] flex-none snap-center flex flex-col gap-4 rounded-3xl p-3 transition-colors ${isTodayDate ? 'bg-primary/5 border border-primary/20' : ''}`}
+                  className={`min-w-[320px] w-[320px] flex-none snap-center flex flex-col gap-4 rounded-[2rem] p-4 transition-colors premium-panel ${isTodayDate ? 'ring-1 ring-primary/25' : ''}`}
                 >
-                  <div className="text-center mb-2 flex flex-col items-center">
-                    <h3 className={`text-xs font-black uppercase tracking-widest ${isTodayDate ? 'text-primary' : isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>
+                  <div className="text-center mb-2 flex flex-col items-center border-b border-white/6 pb-4">
+                    <h3 className={`text-xs font-black uppercase tracking-[0.28em] ${isTodayDate ? 'text-primary' : isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>
                       {format(dayDate, 'EEEE', { locale: currentLocale })}
                     </h3>
-                    <span className={`text-[10px] font-medium mt-1 ${isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>
+                    <span className={`text-[11px] font-medium mt-2 ${isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>
                       {format(dayDate, 'dd/MM')}
                     </span>
                     {isDayCompletelyPast && (
@@ -136,14 +146,14 @@ const WeekView = () => {
                     return (
                       <div key={shift} className="space-y-3">
                         {config.routineMode === 'shifts' && (
-                          <div className="flex items-center justify-between px-1">
+                          <div className="flex items-center justify-between px-1 pt-1">
                             <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">{SHIFT_LABELS[shift]}</span>
-                            <span className="text-[10px] font-medium text-muted-foreground">{activities.length} {t('activities')}</span>
+                            <span className="text-[10px] font-medium text-muted-foreground bg-secondary rounded-full px-2 py-1 border border-border">{activities.length} {t('activities')}</span>
                           </div>
                         )}
 
                         {activities.length === 0 && (
-                          <div className="h-24 rounded-2xl border border-dashed border-border bg-secondary/30 opacity-50 flex items-center justify-center">
+                          <div className="h-24 rounded-2xl border border-dashed border-border bg-secondary/30 opacity-60 flex items-center justify-center">
                             <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">{t('empty')}</span>
                           </div>
                         )}
