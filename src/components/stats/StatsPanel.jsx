@@ -36,7 +36,7 @@ const StatsPanel = () => {
   const isStreakInDanger = !isTodayDone && currentHour >= 18;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto pb-20">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto pb-6 md:pb-8">
       
       {/* RASTREADOR VISUAL DA SEMANA ATUAL */}
       <div className="p-6 rounded-xl border border-border bg-card shadow-sm">

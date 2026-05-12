@@ -34,12 +34,12 @@ const CalendarPanel = ({ selectedDate, onSelectDate, onOpenHistory }) => {
     .filter(({ value }) => hasUsefulContent(value));
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in pb-24">
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in pb-6 md:pb-8">
       <section className="premium-panel rounded-[2rem] p-6 md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground mb-3">{t('calendar') || 'Calendario'}</p>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">{t('calendarTitle') || 'Mapa visual dos seus registros'}</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-foreground">{t('calendarTitle') || 'Mapa visual dos seus registros'}</h2>
             <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed">
               {t('calendarDesc') || 'Acompanhe o mes, veja dias com registro e pule direto para o arquivo detalhado quando quiser abrir uma data.'}
             </p>

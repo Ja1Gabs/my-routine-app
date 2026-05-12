@@ -343,7 +343,7 @@ const LibraryPanel = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in pb-20">
+    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in pb-6 md:pb-8">
       {!isCreating && !editingId && (
         <div className="flex justify-between items-center bg-card p-4 rounded-2xl border border-border shadow-sm mb-6">
           <div>

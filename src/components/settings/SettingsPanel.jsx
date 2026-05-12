@@ -45,7 +45,7 @@ const SettingsPanel = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-20">
+    <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-6 md:pb-8">
       <div className="p-6 bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border border-border rounded-xl flex items-center gap-4 shadow-sm">
         <img src={user?.avatar || 'https://via.placeholder.com/150'} alt="Avatar" className="w-16 h-16 rounded-full border-2 border-border object-cover" />
         <div>
@@ -191,7 +191,7 @@ const SettingsPanel = () => {
           desc={`${themePresets.find((preset) => preset.id === (config.themePreset || 'default'))?.label || 'Padrao'} • ${config.theme === 'dark' ? t('darkMode') : t('lightMode')}`}
           action={(
             <div className="w-full max-w-sm space-y-2">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {themePresets.map((preset) => (
                   <button
                     key={preset.id}

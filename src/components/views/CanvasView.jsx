@@ -155,7 +155,7 @@ const CanvasView = () => {
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-      <div className="flex justify-between items-center px-2">
+      <div className="flex justify-between items-center px-1 sm:px-2 gap-3">
         <div>
           <h2 className="font-bold text-foreground text-xl">{t('board')}</h2>
           <p className="text-xs text-muted-foreground">{t('boardDesc')}</p>
@@ -164,7 +164,7 @@ const CanvasView = () => {
 
       <div
         ref={constraintsRef}
-        className="w-full h-[78vh] min-h-[620px] bg-card border border-border rounded-3xl relative overflow-hidden bg-dots shadow-inner"
+        className="w-full h-[72vh] min-h-[420px] sm:min-h-[520px] md:min-h-[620px] bg-card border border-border rounded-3xl relative overflow-hidden bg-dots shadow-inner"
       >
         {safeNodes.map((node) => {
           const type = node.type || 'activity';
@@ -181,7 +181,7 @@ const CanvasView = () => {
           </div>
         )}
 
-        <div className="absolute bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 bg-background/85 backdrop-blur-xl border border-border p-2 rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-2 max-w-[calc(100%-2rem)] md:max-w-[90%]">
+        <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-1/2 md:right-auto md:-translate-x-1/2 bg-background/85 backdrop-blur-xl border border-border p-2 rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-2 max-w-[calc(100%-1.5rem)] md:max-w-[90%]">
           <button onClick={() => actions.addStickyNode()} className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-primary hover:text-primary-foreground text-foreground rounded-xl text-xs font-bold transition-all active:scale-95 group">
             <StickyNote size={14} className="text-yellow-500 group-hover:text-primary-foreground" /> {t('addSticky')}
           </button>

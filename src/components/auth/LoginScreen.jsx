@@ -42,11 +42,11 @@ const LoginScreen = () => {
         <div className="absolute bottom-[12%] right-[8%] h-64 w-64 rounded-full bg-orange-300/12 blur-3xl" />
       </div>
 
-      <div className="w-full max-w-5xl grid lg:grid-cols-[1.1fr_440px] gap-6 items-stretch relative z-10">
+      <div className="w-full max-w-5xl grid lg:grid-cols-[1.1fr_minmax(320px,440px)] gap-6 items-stretch relative z-10">
         <div className="hidden lg:flex premium-panel rounded-[2rem] p-10 flex-col justify-between min-h-[620px]">
           <div>
             <p className="eyebrow text-muted-foreground mb-4">My Routine</p>
-            <h1 className="hero-title text-6xl leading-[0.95] text-foreground max-w-md">
+            <h1 className="hero-title text-4xl xl:text-6xl leading-[0.95] text-foreground max-w-md">
               Planejamento pessoal com foco, memoria e ritmo.
             </h1>
             <p className="mt-5 text-base text-muted-foreground max-w-lg leading-relaxed">
@@ -54,7 +54,7 @@ const LoginScreen = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="premium-tile rounded-2xl p-4">
               <p className="eyebrow text-muted-foreground mb-2">Semana</p>
               <p className="text-sm font-semibold text-foreground">Cards planejados com mais estabilidade</p>

@@ -59,7 +59,7 @@ const WeekView = () => {
   };
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 overflow-hidden">
+    <div className="space-y-6 md:space-y-8 pb-6 md:pb-8 animate-in fade-in slide-in-from-bottom-4 overflow-hidden">
       <div className="premium-panel rounded-[2rem] px-5 py-6 md:px-8 md:py-7">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12">
         <div className="flex-shrink-0 animate-in zoom-in-90 duration-500 delay-100 hidden sm:block">
@@ -68,7 +68,7 @@ const WeekView = () => {
 
           <div className="flex-1 text-center lg:text-left">
             <p className="eyebrow text-muted-foreground mb-2">Planejamento da semana</p>
-            <h2 className="hero-title text-3xl md:text-4xl text-foreground leading-none">Uma semana desenhada para continuar coerente.</h2>
+            <h2 className="hero-title text-2xl sm:text-3xl md:text-4xl text-foreground leading-none">Uma semana desenhada para continuar coerente.</h2>
             <p className="text-sm md:text-base text-muted-foreground mt-3 max-w-2xl">
               Veja o que ja esta definido, o que ainda pede energia e o que vale preservar para nao quebrar seu ritmo.
             </p>
@@ -93,7 +93,7 @@ const WeekView = () => {
       </div>
       </div>
 
-      <div ref={scrollContainerRef} className="custom-scrollbar flex overflow-x-auto pb-10 pt-4 snap-x snap-mandatory gap-6 px-4 scroll-smooth">
+      <div ref={scrollContainerRef} className="custom-scrollbar flex overflow-x-auto pb-8 pt-4 snap-x snap-mandatory gap-4 md:gap-6 px-1 sm:px-2 md:px-4 scroll-smooth">
         <AnimatePresence>
           {!isShuffling &&
             currentWeek.map((dayData, index) => {
@@ -108,7 +108,7 @@ const WeekView = () => {
                   initial={{ opacity: 0, x: 50, scale: 0.9 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25, delay: index * 0.05 }}
-                  className={`min-w-[320px] w-[320px] flex-none snap-center flex flex-col gap-4 rounded-[2rem] p-4 transition-colors premium-panel ${isTodayDate ? 'ring-1 ring-primary/25' : ''}`}
+                  className={`min-w-[280px] w-[84vw] max-w-[320px] sm:min-w-[320px] sm:w-[320px] flex-none snap-center flex flex-col gap-4 rounded-[2rem] p-4 transition-colors premium-panel ${isTodayDate ? 'ring-1 ring-primary/25' : ''}`}
                 >
                   <div className="text-center mb-2 flex flex-col items-center border-b border-white/6 pb-4">
                     <h3 className={`text-xs font-black uppercase tracking-[0.28em] ${isTodayDate ? 'text-primary' : isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>

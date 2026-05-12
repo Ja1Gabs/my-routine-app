@@ -34,7 +34,7 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300 bg-cover bg-center bg-fixed relative overflow-hidden"
+      className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300 bg-cover bg-center bg-fixed relative overflow-x-hidden"
       style={{ backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : undefined }}
     >
       {config.backgroundImage && <div className="fixed inset-0 bg-background/80 dark:bg-black/80 z-0 pointer-events-none backdrop-blur-[2px]" />}
@@ -59,7 +59,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-7xl mx-auto relative z-10 px-4 md:px-8 pb-28 md:pb-10 pt-5">
+      <div className="max-w-7xl mx-auto relative z-10 px-3 sm:px-4 md:px-8 pt-4 md:pt-5 pb-20 md:pb-6">
         <header className="mb-8 md:mb-10">
           <div className="premium-panel rounded-[2rem] px-5 py-5 md:px-8 md:py-7">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -73,14 +73,14 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-3 md:gap-4 mb-3">
                   <img
                     src="/logo-my-routine.svg"
                     alt="Logo My Routine"
-                    className="w-14 h-14 md:w-16 md:h-16 rounded-[1.35rem] shadow-[0_18px_45px_rgba(0,0,0,0.18)]"
+                    className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-[1.1rem] md:rounded-[1.35rem] shadow-[0_18px_45px_rgba(0,0,0,0.18)]"
                   />
-                  <div>
-                    <h1 className="hero-title text-4xl md:text-6xl leading-none text-foreground">{t('appTitle')}</h1>
+                  <div className="min-w-0">
+                    <h1 className="hero-title text-3xl sm:text-4xl md:text-6xl leading-none text-foreground break-words">{t('appTitle')}</h1>
                     <p className="text-muted-foreground text-sm md:text-base font-medium mt-2 max-w-xl">{t('appSubtitle')}</p>
                   </div>
                 </div>
@@ -98,7 +98,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[320px]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 w-full lg:w-[320px]">
                 <div className="premium-tile rounded-2xl px-3 py-3">
                   <p className="eyebrow text-muted-foreground mb-1">Modo</p>
                   <p className="text-sm font-bold text-foreground">{config.routineMode === 'shifts' ? 'Turnos' : 'Simples'}</p>
@@ -165,7 +165,7 @@ export default function Home() {
       </div>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/88 backdrop-blur-2xl border-t border-border z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.14)]">
-        <div className="grid grid-cols-4 gap-1 px-2 py-2">
+        <div className="grid grid-cols-5 gap-1 px-2 py-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -175,7 +175,7 @@ export default function Home() {
               }`}
             >
               <tab.icon size={18} className={activeTab === tab.id ? 'fill-primary/20' : ''} />
-              <span className="text-[9px] font-bold leading-none">{t(tab.label)}</span>
+              <span className="text-[8px] font-bold leading-none text-center">{t(tab.label)}</span>
             </button>
           ))}
         </div>

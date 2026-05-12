@@ -27,8 +27,8 @@ const CyclesPanel = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in pb-24">
-      <section className="max-w-6xl mx-auto premium-panel rounded-[2rem] p-6 md:p-8 overflow-hidden relative">
+    <div className="space-y-6 animate-in fade-in pb-6 md:pb-8">
+      <section className="max-w-6xl mx-auto premium-panel rounded-[2rem] p-5 md:p-8 overflow-hidden relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.14),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_28%)] pointer-events-none" />
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -36,7 +36,7 @@ const CyclesPanel = () => {
             <h2 className="hero-title text-4xl md:text-5xl leading-none text-foreground">kanban pessoal com mais presença</h2>
             <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed">{t('cyclesDesc')}</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 w-full lg:w-[360px]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-[360px]">
             {COLUMNS.map((column) => (
               <div key={column} className="premium-tile rounded-2xl px-4 py-4">
                 <p className="eyebrow text-muted-foreground mb-1">{t(column)}</p>
@@ -47,7 +47,7 @@ const CyclesPanel = () => {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto bg-card border border-border rounded-[1.75rem] p-5 md:p-6 shadow-[0_18px_55px_rgba(0,0,0,0.08)]">
+      <section className="max-w-6xl mx-auto bg-card border border-border rounded-[1.75rem] p-4 sm:p-5 md:p-6 shadow-[0_18px_55px_rgba(0,0,0,0.08)]">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
             <Sparkles size={22} />
@@ -90,7 +90,7 @@ const CyclesPanel = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
         {COLUMNS.map((column) => (
-          <section key={column} className={`rounded-[1.75rem] border border-border bg-gradient-to-b ${columnColors[column]} bg-card p-4 md:p-5 min-h-[30rem] shadow-[0_16px_45px_rgba(0,0,0,0.08)]`}>
+          <section key={column} className={`rounded-[1.75rem] border border-border bg-gradient-to-b ${columnColors[column]} bg-card p-4 md:p-5 min-h-[20rem] lg:min-h-[30rem] shadow-[0_16px_45px_rgba(0,0,0,0.08)]`}>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-[0.28em] text-foreground">{t(column)}</h3>

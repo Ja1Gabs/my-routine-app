@@ -100,7 +100,7 @@ const GoalPanel = () => {
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors";
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto pb-20">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto pb-6 md:pb-8">
       
       {/* Header */}
       <div className="flex justify-between items-center mb-6">

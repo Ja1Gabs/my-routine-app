@@ -165,13 +165,13 @@ const HistoryPanel = ({ selectedDate, onSelectDate, onOpenCalendar }) => {
   const activeEntry = datesWithContent.find((entry) => entry.dateStr === activeDate) || null;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in pb-24">
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in pb-6 md:pb-8">
       <section className="premium-panel rounded-[2rem] p-6 md:p-8 overflow-hidden relative">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.16),transparent_30%)] pointer-events-none" />
         <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow text-muted-foreground mb-3">{t('history')}</p>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">{t('historyArchive') || 'Arquivo premium da sua rotina'}</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-foreground">{t('historyArchive') || 'Arquivo premium da sua rotina'}</h2>
             <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed">
               {t('historyArchiveDesc') || 'Veja seus registros com mais clareza e navegue para o calendario quando quiser revisar o ritmo do mes.'}
             </p>
