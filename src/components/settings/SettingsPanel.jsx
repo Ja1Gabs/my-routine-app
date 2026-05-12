@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Moon, Sun, LogOut, ShieldAlert, Calendar, Globe, Image as ImageIcon, LayoutTemplate, Layers3 } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 
@@ -19,6 +19,25 @@ const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
 
 const SettingsPanel = () => {
   const { user, config, actions, activitiesPool, t } = useRoutine();
+  const backgroundInputRef = useRef(null);
+
+  const updateBackgroundImage = (value) => {
+    actions.setConfig({ ...config, backgroundImage: value });
+  };
+
+  const handleBackgroundUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        updateBackgroundImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-20">
@@ -175,15 +194,38 @@ const SettingsPanel = () => {
         <SettingsItem
           icon={ImageIcon}
           title={t('backgroundImage') || 'Imagem de Fundo'}
-          desc={t('backgroundDesc') || 'Cole uma URL de imagem'}
+          desc={t('backgroundDesc') || 'Use um link ou envie uma imagem do seu dispositivo'}
           action={(
-            <input
-              type="text"
-              placeholder="https://images.unsplash.com/..."
-              className="w-48 bg-secondary border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
-              value={config.backgroundImage || ''}
-              onChange={(e) => actions.setConfig({ ...config, backgroundImage: e.target.value })}
-            />
+            <div className="w-full max-w-sm space-y-2">
+              <input
+                type="file"
+                accept="image/*"
+                ref={backgroundInputRef}
+                className="hidden"
+                onChange={handleBackgroundUpload}
+              />
+              <input
+                type="text"
+                placeholder="https://images.unsplash.com/..."
+                className="w-full bg-secondary border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+                value={config.backgroundImage || ''}
+                onChange={(e) => updateBackgroundImage(e.target.value)}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => backgroundInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-bold rounded-lg border border-border transition-colors hover:bg-border active:scale-95"
+                >
+                  Upload
+                </button>
+                <button
+                  onClick={() => updateBackgroundImage('')}
+                  className="px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-bold rounded-lg border border-border transition-colors hover:bg-border active:scale-95"
+                >
+                  Remover
+                </button>
+              </div>
+            </div>
           )}
         />
       </div>

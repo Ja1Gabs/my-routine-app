@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Palette,
   Plus,
@@ -20,6 +20,8 @@ import {
   Briefcase,
   Pin,
   Shuffle,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
@@ -282,6 +284,63 @@ const LibraryPanel = () => {
   const { activitiesPool, actions, t } = useRoutine();
   const [editingId, setEditingId] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
+  const importInputRef = useRef(null);
+
+  const exportLibrary = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      activities: activitiesPool,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `my-routine-library-${stamp}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importLibrary = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const rawText = await file.text();
+      const parsed = JSON.parse(rawText);
+      const importedActivities = Array.isArray(parsed) ? parsed : parsed.activities;
+
+      if (!Array.isArray(importedActivities) || importedActivities.length === 0) {
+        alert('Arquivo sem cartas validas para importar.');
+        return;
+      }
+
+      importedActivities.forEach((activity) => {
+        const nextActivity = {
+          ...activity,
+          id: activity.id || crypto.randomUUID(),
+          rules: {
+            frequency: 1,
+            appearanceChance: 1,
+            allowedDays: [0, 1, 2, 3, 4, 5, 6],
+            allowedShifts: ['morning', 'afternoon', 'night'],
+            pinnedDays: [],
+            ...activity.rules,
+          },
+          defaultTasks: Array.isArray(activity.defaultTasks) ? activity.defaultTasks : [],
+        };
+        actions.saveActivity(nextActivity);
+      });
+
+      alert(`${importedActivities.length} carta(s) importada(s) para a biblioteca.`);
+    } catch (error) {
+      alert('Nao foi possivel importar esse arquivo.');
+    } finally {
+      event.target.value = '';
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in pb-20">
@@ -291,9 +350,30 @@ const LibraryPanel = () => {
             <h2 className="text-xl font-black text-foreground">{t('libTitle')}</h2>
             <p className="text-xs text-muted-foreground">{activitiesPool.length} cartas criadas</p>
           </div>
-          <button onClick={() => setIsCreating(true)} className="bg-primary text-primary-foreground font-bold text-sm px-5 py-2.5 rounded-xl flex items-center gap-2 hover:opacity-90 transition-all shadow-md active:scale-95">
-            <Plus size={16} /> {t('newCard')}
-          </button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={importLibrary}
+            />
+            <button
+              onClick={() => importInputRef.current?.click()}
+              className="bg-secondary text-foreground font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-border transition-all shadow-sm active:scale-95"
+            >
+              <Upload size={16} /> Importar
+            </button>
+            <button
+              onClick={exportLibrary}
+              className="bg-secondary text-foreground font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-border transition-all shadow-sm active:scale-95"
+            >
+              <Download size={16} /> Exportar
+            </button>
+            <button onClick={() => setIsCreating(true)} className="bg-primary text-primary-foreground font-bold text-sm px-5 py-2.5 rounded-xl flex items-center gap-2 hover:opacity-90 transition-all shadow-md active:scale-95">
+              <Plus size={16} /> {t('newCard')}
+            </button>
+          </div>
         </div>
       )}
 
