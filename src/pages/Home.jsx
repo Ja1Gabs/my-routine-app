@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, Rows3 } from 'lucide-react';
+import { LayoutGrid, BarChart3, History, Settings, Target, Library, Coffee, KanbanSquare, Rows3, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoutine } from '../context/RoutineContext';
 import WeekView from '../components/views/WeekView';
@@ -11,10 +11,12 @@ import LibraryPanel from '../components/library/LibraryPanel';
 import LoginScreen from '../components/auth/LoginScreen';
 import CanvasView from '../components/views/CanvasView';
 import CyclesPanel from '../components/cycles/CyclesPanel';
+import CalendarPanel from '../components/history/CalendarPanel';
 
 export default function Home() {
   const { user, config, t, isServerWaking } = useRoutine();
   const [activeTab, setActiveTab] = useState('week');
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState('');
 
   if (!user) return <LoginScreen />;
 
@@ -25,6 +27,7 @@ export default function Home() {
     { id: 'library', label: 'library', icon: Library },
     { id: 'goals', label: 'goals', icon: Target },
     { id: 'stats', label: 'stats', icon: BarChart3 },
+    { id: 'calendar', label: 'calendar', icon: CalendarDays },
     { id: 'history', label: 'history', icon: History },
     { id: 'config', label: 'config', icon: Settings },
   ];
@@ -141,7 +144,20 @@ export default function Home() {
               {activeTab === 'library' && <LibraryPanel />}
               {activeTab === 'goals' && <GoalPanel />}
               {activeTab === 'stats' && <StatsPanel />}
-              {activeTab === 'history' && <HistoryPanel />}
+              {activeTab === 'calendar' && (
+                <CalendarPanel
+                  selectedDate={selectedHistoryDate}
+                  onSelectDate={setSelectedHistoryDate}
+                  onOpenHistory={() => setActiveTab('history')}
+                />
+              )}
+              {activeTab === 'history' && (
+                <HistoryPanel
+                  selectedDate={selectedHistoryDate}
+                  onSelectDate={setSelectedHistoryDate}
+                  onOpenCalendar={() => setActiveTab('calendar')}
+                />
+              )}
               {activeTab === 'config' && <SettingsPanel />}
             </motion.div>
           </AnimatePresence>

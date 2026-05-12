@@ -42,6 +42,7 @@ const getLocalUser = () => {
 
 const normalizeConfig = (savedConfig = {}) => ({
   theme: 'dark',
+  themePreset: 'default',
   sundayMode: 'pause',
   lang: 'pt',
   routineMode: 'simple',
@@ -80,11 +81,42 @@ export const RoutineProvider = ({ children }) => {
 
   const t = (key) => TRANSLATIONS[config.lang || 'pt'][key] || key;
 
+  const applyRemoteSnapshot = (snapshot = {}, configFallback = config) => {
+    const nextConfig = normalizeConfig(snapshot.config || configFallback);
+    const nextShifts = getConfiguredShifts(nextConfig);
+
+    skipNextTouchRef.current = true;
+    lastChangeAtRef.current = snapshot?.meta?.updatedAt || lastChangeAtRef.current || new Date().toISOString();
+
+    setActivitiesPool(Array.isArray(snapshot.activities) ? snapshot.activities : []);
+    setCurrentWeek(normalizeWeekData(snapshot.currentWeek, nextShifts));
+    setHistory(snapshot.history || {});
+    setGoals(Array.isArray(snapshot.goals) ? snapshot.goals : []);
+    setCanvasNodes(Array.isArray(snapshot.canvasNodes) ? snapshot.canvasNodes : []);
+    setCycleCards(Array.isArray(snapshot.cycleCards) ? snapshot.cycleCards : []);
+    setConfig(nextConfig);
+
+    localStorage.setItem(
+      DB_KEY,
+      JSON.stringify({
+        activities: Array.isArray(snapshot.activities) ? snapshot.activities : [],
+        currentWeek: normalizeWeekData(snapshot.currentWeek, nextShifts),
+        history: snapshot.history || {},
+        goals: Array.isArray(snapshot.goals) ? snapshot.goals : [],
+        config: nextConfig,
+        canvasNodes: Array.isArray(snapshot.canvasNodes) ? snapshot.canvasNodes : [],
+        cycleCards: Array.isArray(snapshot.cycleCards) ? snapshot.cycleCards : [],
+        meta: { updatedAt: snapshot?.meta?.updatedAt || lastChangeAtRef.current },
+      }),
+    );
+  };
+
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    root.classList.remove('light', 'dark', 'theme-default', 'theme-professional', 'theme-cozy');
     root.classList.add(config.theme === 'light' ? 'light' : 'dark');
-  }, [config.theme]);
+    root.classList.add(`theme-${config.themePreset || 'default'}`);
+  }, [config.theme, config.themePreset]);
 
   useEffect(() => {
     setCurrentWeek((prev) => normalizeWeekData(prev, getConfiguredShifts(config)));
@@ -114,17 +146,7 @@ export const RoutineProvider = ({ children }) => {
             return;
           }
 
-          const nextConfig = normalizeConfig(data.config || config);
-          const nextShifts = getConfiguredShifts(nextConfig);
-          skipNextTouchRef.current = true;
-          lastChangeAtRef.current = data?.meta?.updatedAt || lastChangeAtRef.current;
-          if (data.activities) setActivitiesPool(data.activities);
-          if (data.currentWeek) setCurrentWeek(normalizeWeekData(data.currentWeek, nextShifts));
-          if (data.history) setHistory(data.history);
-          if (data.goals) setGoals(data.goals);
-          if (data.canvasNodes) setCanvasNodes(data.canvasNodes);
-          if (data.cycleCards) setCycleCards(data.cycleCards);
-          if (data.config) setConfig(nextConfig);
+          applyRemoteSnapshot(data, config);
         }
       } catch (error) {
         clearTimeout(wakeTimer);
@@ -417,6 +439,11 @@ export const RoutineProvider = ({ children }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      const remoteSnapshot = data.data && typeof data.data === 'object' ? data.data : {};
+      applyRemoteSnapshot(remoteSnapshot, config);
+      setHasCompletedInitialSync(true);
+      hasCheckedWeekRef.current = false;
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('auth_token', data.token);

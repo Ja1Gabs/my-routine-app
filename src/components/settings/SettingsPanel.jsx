@@ -20,6 +20,11 @@ const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
 const SettingsPanel = () => {
   const { user, config, actions, activitiesPool, t } = useRoutine();
   const backgroundInputRef = useRef(null);
+  const themePresets = [
+    { id: 'default', label: t('themeDefault') || 'Padrao' },
+    { id: 'professional', label: t('themeProfessional') || 'Profissional' },
+    { id: 'cozy', label: t('themeCozy') || 'Cozy' },
+  ];
 
   const updateBackgroundImage = (value) => {
     actions.setConfig({ ...config, backgroundImage: value });
@@ -183,11 +188,39 @@ const SettingsPanel = () => {
         <SettingsItem
           icon={config.theme === 'dark' ? Moon : Sun}
           title={t('theme')}
-          desc={config.theme === 'dark' ? t('darkMode') : t('lightMode')}
+          desc={`${themePresets.find((preset) => preset.id === (config.themePreset || 'default'))?.label || 'Padrao'} • ${config.theme === 'dark' ? t('darkMode') : t('lightMode')}`}
           action={(
-            <button onClick={() => actions.setConfig({ ...config, theme: config.theme === 'dark' ? 'light' : 'dark' })} className="px-3 py-1.5 bg-secondary text-secondary-foreground text-xs font-bold rounded-lg border border-border transition-colors hover:bg-border active:scale-95">
-              {t('change') || 'Alterar'}
-            </button>
+            <div className="w-full max-w-sm space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                {themePresets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => actions.setConfig({ ...config, themePreset: preset.id })}
+                    className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                      (config.themePreset || 'default') === preset.id
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-secondary text-foreground hover:bg-border'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex bg-secondary rounded-lg p-1 border border-border">
+                <button
+                  onClick={() => actions.setConfig({ ...config, theme: 'light' })}
+                  className={`flex-1 px-3 py-1.5 text-xs font-bold rounded transition-colors ${config.theme === 'light' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {t('lightMode')}
+                </button>
+                <button
+                  onClick={() => actions.setConfig({ ...config, theme: 'dark' })}
+                  className={`flex-1 px-3 py-1.5 text-xs font-bold rounded transition-colors ${config.theme === 'dark' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {t('darkMode')}
+                </button>
+              </div>
+            </div>
           )}
         />
 

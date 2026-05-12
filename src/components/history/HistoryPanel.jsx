@@ -1,8 +1,29 @@
-import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths, isToday, parseISO } from 'date-fns';
+import React, { useMemo } from 'react';
+import { format, parseISO } from 'date-fns';
 import { ptBR, enUS } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Image as ImageIcon, Sun, CloudSun, MoonStar, CheckSquare, X, PlaySquare, Rocket, Code2, Coffee, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  CheckSquare,
+  FileText,
+  Image as ImageIcon,
+  Moon,
+  MoonStar,
+  CloudSun,
+  Sun,
+  Sparkles,
+  Code2,
+  Coffee,
+  Music,
+  Palette,
+  Book,
+  Dumbbell,
+  Gamepad,
+  Heart,
+  Briefcase,
+  Rocket,
+} from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
 import { listHistoryEntriesForDate } from '../../lib/routine';
@@ -10,292 +31,247 @@ import { listHistoryEntriesForDate } from '../../lib/routine';
 const ICON_MAP = { Code2, Coffee, Rocket, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase };
 
 const SHIFT_ICONS = {
-  morning: <Sun size={12} className="text-yellow-500" />,
+  morning: <Sun size={12} className="text-amber-500" />,
   afternoon: <CloudSun size={12} className="text-orange-500" />,
   night: <MoonStar size={12} className="text-indigo-500" />,
-  default: <CheckCircle2 size={12} className="text-primary" />
+  default: <CheckCircle2 size={12} className="text-primary" />,
 };
-const SHIFT_LABELS = { morning: 'Manhã', afternoon: 'Tarde', night: 'Noite', default: 'Geral' };
 
-// --- CARD ARQUIVADO (GRAVAÇÃO) ---
-const ArchivedCard = ({ record, shift }) => {
-  const activity = record.activity || { name: "Atividade Encerrada", theme: "slate", iconName: "Archive" };
+const SHIFT_LABELS = {
+  morning: 'Manha',
+  afternoon: 'Tarde',
+  night: 'Noite',
+  default: 'Geral',
+};
+
+const hasUsefulContent = (entry) =>
+  entry?.completed || entry?.notes || entry?.image || (Array.isArray(entry?.tasks) && entry.tasks.length > 0);
+
+const ArchivedCard = ({ record, shift, t }) => {
+  const activity = record.activity || { name: 'Atividade Encerrada', theme: 'slate', iconName: 'Rocket' };
   const theme = THEMES[activity.theme] || THEMES.slate;
   const Icon = ICON_MAP[activity.iconName] || Rocket;
+  const completedTasks = Array.isArray(record.tasks) ? record.tasks.filter((task) => task.completed).length : 0;
 
   return (
-    <div className={`relative rounded-2xl border p-4 flex flex-col overflow-hidden transition-all shadow-sm ${theme.card}`}>
+    <article className={`relative overflow-hidden rounded-[1.75rem] border p-5 shadow-[0_22px_60px_rgba(0,0,0,0.10)] transition-all ${theme.card}`}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_42%)] pointer-events-none" />
       {record.image && (
-        <div className="absolute inset-0 z-0">
-          <img src={record.image} alt="Proof" className="w-full h-full object-cover opacity-20 mix-blend-overlay" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/10" />
+        <div className="absolute inset-0 opacity-20 mix-blend-overlay">
+          <img src={record.image} alt="Registro" className="w-full h-full object-cover" />
         </div>
       )}
 
-      <div className="flex justify-between items-start mb-3 relative z-10">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme.iconBox} text-xl shadow-sm bg-background border border-border`}>
-          {activity.emoji ? <span>{activity.emoji}</span> : <Icon size={20} strokeWidth={2} />}
+      <div className="relative z-10 flex items-start justify-between gap-4 mb-4">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${theme.iconBox} bg-background/90 border border-border shadow-sm text-xl`}>
+          {activity.emoji ? <span>{activity.emoji}</span> : <Icon size={22} strokeWidth={2} />}
         </div>
-        
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1.5 bg-background border border-border px-2 py-1 rounded-md shadow-sm">
+        <div className="flex flex-col items-end gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">
             {SHIFT_ICONS[shift]}
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{SHIFT_LABELS[shift]}</span>
-          </div>
+            {t(shift) || SHIFT_LABELS[shift] || shift}
+          </span>
           {record.completed && (
-            <div className="flex items-center gap-1 text-[9px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded-md border border-green-500/20 uppercase tracking-widest">
-              <CheckCircle2 size={10} /> Concluído
-            </div>
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-500">
+              <CheckCircle2 size={11} />
+              {t('done')}
+            </span>
           )}
         </div>
       </div>
 
-      <h2 className={`text-lg font-black mb-4 tracking-tight relative z-10 ${theme.title}`}>{activity.name}</h2>
+      <div className="relative z-10 space-y-4">
+        <div>
+          <h3 className={`text-xl font-black tracking-tight ${theme.title}`}>{activity.name}</h3>
+          {record.assignedTask && <p className="text-sm text-muted-foreground mt-1">{record.assignedTask}</p>}
+        </div>
 
-      <div className="space-y-4 relative z-10">
-        {record.tasks && record.tasks.length > 0 && (
-          <div className="bg-secondary/80 p-3 rounded-xl border border-border">
-            <label className="text-[9px] uppercase text-muted-foreground font-black mb-2 flex items-center gap-1"><CheckSquare size={10}/> Checklist</label>
+        {Array.isArray(record.tasks) && record.tasks.length > 0 && (
+          <section className="rounded-2xl border border-border bg-background/55 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">
+                <CheckSquare size={12} />
+                {t('tasksTitle')}
+              </span>
+              <span className="text-xs font-bold text-foreground">{completedTasks}/{record.tasks.length}</span>
+            </div>
             <div className="space-y-2">
-              {record.tasks.map(t => (
-                <div key={t.id} className="flex items-start gap-2">
-                  <CheckCircle2 size={14} className={`shrink-0 mt-0.5 ${t.completed ? 'text-green-500' : 'text-muted-foreground/30'}`} />
-                  <span className={`text-xs font-medium ${t.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{t.text}</span>
+              {record.tasks.map((task) => (
+                <div key={task.id} className="flex items-start gap-2 text-sm">
+                  <CheckCircle2 size={14} className={`mt-0.5 shrink-0 ${task.completed ? 'text-emerald-500' : 'text-muted-foreground/35'}`} />
+                  <span className={task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}>{task.text}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {record.notes && (
-          <div className="bg-secondary/80 p-3 rounded-xl border border-border">
-             <label className="text-[9px] uppercase text-muted-foreground font-black mb-2 flex items-center gap-1"><FileText size={10}/> Notas do dia</label>
-             <p className="text-xs text-foreground italic border-l-2 border-primary pl-2">{record.notes}</p>
-          </div>
+          <section className="rounded-2xl border border-border bg-background/55 p-4">
+            <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground mb-3">
+              <FileText size={12} />
+              {t('notes')}
+            </span>
+            <p className="text-sm text-foreground leading-relaxed">{record.notes}</p>
+          </section>
         )}
 
         {record.image && (
-           <div className="bg-secondary/80 p-3 rounded-xl border border-border mt-4">
-             <label className="text-[9px] uppercase text-muted-foreground font-black mb-2 flex items-center gap-1"><ImageIcon size={10}/> Anexo</label>
-             <img src={record.image} className="w-full h-40 object-cover rounded-lg border border-border shadow-sm" alt="Record" />
-           </div>
+          <section className="rounded-2xl border border-border bg-background/55 p-3">
+            <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground mb-3">
+              <ImageIcon size={12} />
+              {t('proofImage')}
+            </span>
+            <img src={record.image} className="w-full h-44 object-cover rounded-[1rem] border border-border shadow-sm" alt="Registro visual" />
+          </section>
         )}
       </div>
-    </div>
+    </article>
   );
 };
 
-
-// --- PAINEL PRINCIPAL ---
-const HistoryPanel = ({ completedDays = {} }) => {
-  const { t, config, history } = useRoutine();
-  const today = new Date();
-  
-  const [viewingMonth, setViewingMonth] = useState(startOfMonth(today));
-  
-  // Estados para Multi-select e Modal
-  const[selectedDates, setSelectedDates] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const currentMonthStart = startOfMonth(viewingMonth);
-  const currentMonthEnd = endOfMonth(viewingMonth);
-  const daysInMonth = eachDayOfInterval({ start: currentMonthStart, end: currentMonthEnd });
-  const startDayIndex = getDay(currentMonthStart); 
-  
+const HistoryPanel = ({ selectedDate, onSelectDate, onOpenCalendar }) => {
+  const { t, config, history, completedDays } = useRoutine();
   const dateLocale = config.lang === 'en' ? enUS : ptBR;
-  const translatedDays = t('weekDaysShort');
-  const weekDays = Array.isArray(translatedDays) ? translatedDays :["D", "S", "T", "Q", "Q", "S", "S"];
 
-  const toggleDateSelection = (dateStr) => {
-    setSelectedDates(prev => prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr]);
-  };
+  const datesWithContent = useMemo(() => {
+    const grouped = {};
 
-  // Coleta as gravações dos dias selecionados
-  const getSelectedRecordings = () => {
-    let recordings = {};
-
-    selectedDates.forEach(dateStr => {
-      recordings[dateStr] = listHistoryEntriesForDate(history, dateStr)
-        .filter(({ value }) => value?.completed || value?.notes || value?.image || (value?.tasks && value.tasks.length > 0))
-        .map(({ shiftKey, value }) => ({ shift: shiftKey, ...value }));
+    Object.keys(history || {}).forEach((key) => {
+      const dateStr = key.split('_')[0];
+      if (!grouped[dateStr]) grouped[dateStr] = [];
     });
-    return recordings;
-  };
 
-  const recordings = getSelectedRecordings();
-  const sortedSelectedDates = [...selectedDates].sort();
+    return Object.keys(grouped)
+      .map((dateStr) => {
+        const records = listHistoryEntriesForDate(history, dateStr)
+          .filter(({ value }) => hasUsefulContent(value))
+          .map(({ shiftKey, value }) => ({ shift: shiftKey, ...value }));
+
+        return {
+          dateStr,
+          records,
+          completed: Boolean(completedDays?.[dateStr]),
+        };
+      })
+      .filter((entry) => entry.records.length > 0)
+      .sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+  }, [history, completedDays]);
+
+  const activeDate = selectedDate && datesWithContent.some((entry) => entry.dateStr === selectedDate)
+    ? selectedDate
+    : datesWithContent[0]?.dateStr || '';
+
+  const activeEntry = datesWithContent.find((entry) => entry.dateStr === activeDate) || null;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto pb-32">
-      
-      {/* CALENDÁRIO */}
-      <div className="p-6 rounded-3xl border border-border bg-card shadow-sm">
-        <div className="flex items-center justify-between mb-6 px-2">
-          <button onClick={() => setViewingMonth(subMonths(viewingMonth, 1))} className="p-2 bg-secondary hover:bg-border rounded-xl text-muted-foreground hover:text-foreground transition-all">
-            <ChevronLeft size={20} />
-          </button>
-          <h2 className="text-xl font-black capitalize text-foreground tracking-tight">
-            {format(viewingMonth, 'MMMM yyyy', { locale: dateLocale })}
-          </h2>
-          <button onClick={() => setViewingMonth(addMonths(viewingMonth, 1))} className="p-2 bg-secondary hover:bg-border rounded-xl text-muted-foreground hover:text-foreground transition-all">
-            <ChevronRight size={20} />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2 mb-2 text-center">
-          {weekDays.map((day, i) => (
-            <div key={i} className="text-[10px] font-black text-muted-foreground uppercase tracking-widest py-2">{day}</div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-2">
-          {Array.from({ length: startDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
-
-          {daysInMonth.map((day) => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const isCompleted = completedDays[dateStr];
-            const isCurrentDay = isToday(day);
-            const isSelected = selectedDates.includes(dateStr);
-
-            return (
-              <button 
-                key={dateStr}
-                onClick={() => toggleDateSelection(dateStr)}
-                className={`
-                  aspect-square relative rounded-xl flex flex-col items-center justify-center text-sm font-bold transition-all
-                  hover:scale-105 active:scale-95
-                  ${isSelected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background z-10' : 'border border-transparent'}
-                  ${isCompleted 
-                    ? 'bg-green-500/20 text-green-600 dark:text-green-500 border-green-500/20' 
-                    : 'bg-secondary text-foreground hover:bg-border'
-                  }
-                  ${isCurrentDay && !isCompleted && !isSelected ? 'bg-primary/10 text-primary border-primary/20' : ''}
-                `}
-              >
-                {format(day, 'd')}
-                {isCurrentDay && <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary" />}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex gap-4 mt-6 text-xs text-muted-foreground px-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-500/20 border border-green-500/50"></div> {t('completedLegend')}
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in pb-24">
+      <section className="premium-panel rounded-[2rem] p-6 md:p-8 overflow-hidden relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.16),transparent_30%)] pointer-events-none" />
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="eyebrow text-muted-foreground mb-3">{t('history')}</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">{t('historyArchive') || 'Arquivo premium da sua rotina'}</h2>
+            <p className="text-sm md:text-base text-muted-foreground mt-3 leading-relaxed">
+              {t('historyArchiveDesc') || 'Veja seus registros com mais clareza e navegue para o calendario quando quiser revisar o ritmo do mes.'}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-secondary border border-border"></div> {t('registeredLegend')}
-          </div>
-        </div>
-      </div>
 
-      {/* BARRA FLUTUANTE DE AÇÃO (Quando dias são selecionados) */}
-      <AnimatePresence>
-        {selectedDates.length > 0 && !isModalOpen && (
-          <motion.div
-            initial={{ y: 100, opacity: 0, x: "-50%" }}
-            animate={{ y: 0, opacity: 1, x: "-50%" }}
-            exit={{ y: 100, opacity: 0, x: "-50%" }}
-            className="fixed bottom-8 left-1/2 z-40 bg-foreground text-background px-3 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-border"
-          >
-            <div className="flex items-center gap-2 pl-2">
-              <div className="bg-background text-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-black">
-                {selectedDates.length}
-              </div>
-              <span className="text-xs font-bold hidden sm:inline">selecionados</span>
+          <div className="grid grid-cols-2 gap-3 sm:w-auto w-full">
+            <div className="premium-tile rounded-2xl px-4 py-4">
+              <p className="eyebrow text-muted-foreground mb-1">{t('recordedDays') || 'Dias registrados'}</p>
+              <p className="text-2xl font-black text-foreground">{datesWithContent.length}</p>
             </div>
-            
-            <div className="w-px h-6 bg-background/20 hidden sm:block"></div>
-            
-            <button 
-              onClick={() => setIsModalOpen(true)} 
-              className="flex items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+            <div className="premium-tile rounded-2xl px-4 py-4">
+              <p className="eyebrow text-muted-foreground mb-1">{t('entries') || 'Entradas'}</p>
+              <p className="text-2xl font-black text-foreground">{datesWithContent.reduce((sum, item) => sum + item.records.length, 0)}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 xl:grid-cols-[280px,1fr] gap-6">
+        <aside className="bg-card border border-border rounded-[1.75rem] p-4 md:p-5 shadow-[0_16px_45px_rgba(0,0,0,0.08)] h-fit">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-muted-foreground">{t('selectedDate') || 'Data selecionada'}</p>
+              <h3 className="text-lg font-black text-foreground mt-1">{activeEntry ? format(parseISO(activeEntry.dateStr), 'dd MMM yyyy', { locale: dateLocale }) : '--'}</h3>
+            </div>
+            <button
+              onClick={onOpenCalendar}
+              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-secondary px-3 py-2 text-xs font-bold text-foreground transition-colors hover:bg-border"
             >
-              <PlaySquare size={14} className="text-red-500" /> Puxar Gravações
+              <CalendarDays size={14} />
+              {t('openCalendar') || 'Abrir calendario'}
             </button>
-            
-            <button 
-              onClick={() => setSelectedDates([])} 
-              className="p-2 hover:bg-background/20 rounded-xl transition-colors text-background/70 hover:text-background"
-              title="Limpar seleção"
-            >
-              <X size={16} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
 
-      {/* O MODAL DE VIDRO (ARQUIVO DE GRAVAÇÕES) */}
-      <AnimatePresence>
-        {isModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-md"
-            onClick={() => setIsModalOpen(false)} // Clicar no fundo fecha
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()} // Clicar dentro não fecha
-              className="w-full max-w-4xl max-h-[85vh] bg-card border border-border rounded-3xl shadow-2xl flex flex-col overflow-hidden"
-            >
-              {/* Header do Modal */}
-              <div className="flex justify-between items-center p-6 border-b border-border bg-secondary/30 relative z-20">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-red-500/10 text-red-500 rounded-xl animate-pulse shadow-inner border border-red-500/20">
-                    <PlaySquare size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-foreground tracking-tight">Arquivo de Rotina</h3>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{selectedDates.length} dias recuperados</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-background border border-border hover:bg-border rounded-full text-muted-foreground hover:text-foreground transition-colors active:scale-95">
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Corpo do Modal (Rolável) */}
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-background/30 relative">
-                
-                <div className="space-y-12 relative z-10">
-                  {/* Linha vertical da Timeline */}
-                  <div className="absolute left-[19px] top-6 bottom-6 w-1 bg-border rounded-full z-0 hidden md:block"></div>
-
-                  {sortedSelectedDates.map(dateStr => {
-                    const dayRecords = recordings[dateStr];
-
-                    return (
-                      <div key={dateStr} className="relative z-10 md:pl-12">
-                        {/* Bolinha da Timeline */}
-                        <div className="absolute left-[15px] top-2 w-3 h-3 bg-primary rounded-full ring-4 ring-card hidden md:block"></div>
-                        
-                        <h4 className="text-lg font-black text-foreground mb-4 uppercase tracking-tight flex items-center gap-3">
-                          {format(parseISO(dateStr), "EEEE, dd 'de' MMM", { locale: dateLocale })}
-                          {dayRecords.length === 0 && <span className="text-[10px] bg-secondary border border-border text-muted-foreground px-2 py-1 rounded-md font-bold">Sem Registros Salvos</span>}
-                        </h4>
-
-                        {dayRecords.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {dayRecords.map((rec, i) => (
-                              <ArchivedCard key={i} record={rec} shift={rec.shift} />
-                            ))}
-                          </div>
-                        )}
+          {datesWithContent.length > 0 ? (
+            <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
+              {datesWithContent.map((entry) => {
+                const isActive = entry.dateStr === activeDate;
+                return (
+                  <button
+                    key={entry.dateStr}
+                    onClick={() => onSelectDate(entry.dateStr)}
+                    className={`w-full text-left rounded-2xl border px-4 py-3 transition-all ${
+                      isActive ? 'border-primary bg-primary/10 shadow-sm' : 'border-border bg-background/40 hover:bg-secondary'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-foreground capitalize">{format(parseISO(entry.dateStr), "EEEE, dd MMM", { locale: dateLocale })}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{entry.records.length} {t('entries') || 'entradas'}</p>
                       </div>
-                    );
-                  })}
+                      {entry.completed && <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-background/35 px-4 py-8 text-center">
+              <Sparkles size={20} className="mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm font-bold text-foreground">{t('historyEmpty') || 'Ainda nao ha registros salvos'}</p>
+            </div>
+          )}
+        </aside>
+
+        <div className="space-y-4">
+          {activeEntry ? (
+            <>
+              <div className="bg-card border border-border rounded-[1.75rem] p-5 md:p-6 shadow-[0_16px_45px_rgba(0,0,0,0.08)]">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-muted-foreground">{t('dayDetails')}</p>
+                    <h3 className="text-2xl md:text-3xl font-black text-foreground capitalize mt-2">
+                      {format(parseISO(activeEntry.dateStr), "EEEE, dd 'de' MMMM", { locale: dateLocale })}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={onOpenCalendar}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-foreground px-4 py-3 text-sm font-bold text-background transition-all hover:opacity-90"
+                  >
+                    <ArrowRight size={16} />
+                    {t('openCalendar') || 'Ver no calendario'}
+                  </button>
                 </div>
-
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {activeEntry.records.map((record, index) => (
+                  <ArchivedCard key={`${activeEntry.dateStr}-${record.shift}-${index}`} record={record} shift={record.shift} t={t} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="bg-card border border-dashed border-border rounded-[1.75rem] p-10 text-center">
+              <p className="text-lg font-bold text-foreground">{t('historyEmpty') || 'Ainda nao ha registros salvos'}</p>
+              <p className="text-sm text-muted-foreground mt-2">{t('historyEmptyDesc') || 'Complete uma atividade, adicione nota ou imagem e ela vai aparecer aqui.'}</p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
