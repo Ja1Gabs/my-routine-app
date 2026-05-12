@@ -39,6 +39,7 @@ const getConfiguredShifts = (config) =>
 const normalizeConfig = (savedConfig = {}) => ({
   theme: 'dark',
   themePreset: 'default',
+  layoutMode: 'immersive',
   sundayMode: 'pause',
   lang: 'pt',
   routineMode: 'simple',

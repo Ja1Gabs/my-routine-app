@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format, addDays, startOfWeek, isSameDay, isBefore, startOfToday } from 'date-fns';
 import { ptBR, enUS } from 'date-fns/locale';
 import {
@@ -33,11 +33,29 @@ const WeekView = () => {
   const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
   const [expandedDays, setExpandedDays] = useState({});
   const [currentHour, setCurrentHour] = useState(new Date().getHours());
+  const scrollContainerRef = useRef(null);
+  const isClassicLayout = (config.layoutMode || 'immersive') === 'classic';
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentHour(new Date().getHours()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isClassicLayout) return undefined;
+
+    const container = scrollContainerRef.current;
+    if (!container) return undefined;
+
+    const handleWheel = (e) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [isClassicLayout]);
 
   const toggleExpand = (key) => {
     setExpandedDays((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -67,6 +85,109 @@ const WeekView = () => {
     const dayDate = addDays(startOfCurrentWeek, index);
     return sum + (isBefore(dayDate, today) ? 1 : 0);
   }, 0);
+
+  if (isClassicLayout) {
+    return (
+      <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8 md:gap-16">
+          <div className="flex-shrink-0 animate-in zoom-in-90 duration-500 delay-100 hidden sm:block">
+            <GlassClock />
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => actions.triggerShuffle()}
+              disabled={isShuffling || isOutOfShuffles}
+              className={`
+                px-8 py-3 rounded-full flex items-center gap-3 text-sm font-bold shadow-lg transition-all active:scale-95
+                ${isShuffling || isOutOfShuffles
+                  ? 'bg-secondary text-muted-foreground cursor-not-allowed border border-border shadow-none'
+                  : 'bg-primary hover:opacity-90 text-primary-foreground shadow-primary/20'}
+              `}
+            >
+              <Shuffle size={18} className={isShuffling ? 'animate-spin' : 'opacity-80'} />
+              {isOutOfShuffles ? t('outOfShuffles') : t('shuffle')}
+            </button>
+
+            {config.maxShuffles > 0 && (
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-1 rounded-md border border-border">
+                {shufflesLeft} {t('shufflesLeft')}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div
+          ref={scrollContainerRef}
+          className="custom-scrollbar flex overflow-x-auto pb-10 pt-4 snap-x snap-mandatory gap-6 px-4 scroll-smooth"
+        >
+          <AnimatePresence>
+            {!isShuffling && currentWeek.map((dayData, index) => {
+              const dayDate = addDays(startOfCurrentWeek, index);
+              const dateStr = format(dayDate, 'yyyy-MM-dd');
+              const isTodayDate = isSameDay(today, dayDate);
+              const isDayCompletelyPast = isBefore(dayDate, today);
+
+              return (
+                <motion.div
+                  key={`${dateStr}-${config.shufflesUsed}`}
+                  initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25, delay: index * 0.05 }}
+                  className={`min-w-[280px] w-[280px] flex-none snap-center flex flex-col gap-4 rounded-3xl p-3 transition-colors ${isTodayDate ? 'bg-primary/5 border border-primary/20' : ''}`}
+                >
+                  <div className="text-center mb-2 flex flex-col items-center">
+                    <h3 className={`text-xs font-black uppercase tracking-widest ${isTodayDate ? 'text-primary' : isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>
+                      {format(dayDate, 'EEEE', { locale: currentLocale })}
+                    </h3>
+                    <span className={`text-[10px] font-medium mt-1 ${isDayCompletelyPast ? 'text-muted-foreground opacity-50' : 'text-muted-foreground'}`}>
+                      {format(dayDate, 'dd/MM')}
+                    </span>
+                    {isDayCompletelyPast && <span className="mt-2 text-destructive flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border border-destructive/30 bg-destructive/10"><Lock size={10} /> {t('pastDay')}</span>}
+                    {isTodayDate && <span className="mt-2 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">{t('today')}</span>}
+                  </div>
+
+                  {orderedShifts.map((shift) => {
+                    const activities = Array.isArray(dayData?.[shift]) ? dayData[shift] : [];
+                    const isShiftPast = checkIsPast(dayDate, shift, isTodayDate);
+
+                    if (activities.length === 0) {
+                      return (
+                        <div key={`${shift}-empty`} className="h-24 rounded-2xl border border-dashed border-border bg-secondary/30 opacity-60 flex items-center justify-center">
+                          <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">{t('empty')}</span>
+                        </div>
+                      );
+                    }
+
+                    return activities.map((activity, activityIndex) => {
+                      const uniqueKey = `${dateStr}_${shift}_${activity.id}_${activityIndex}`;
+                      const IconComponent = activity?.iconName && ICON_MAP[activity.iconName] ? ICON_MAP[activity.iconName] : Rocket;
+
+                      return (
+                        <DayCard
+                          key={uniqueKey}
+                          activity={activity}
+                          date={dayDate}
+                          isToday={isTodayDate}
+                          isPast={isShiftPast}
+                          isExpanded={!!expandedDays[uniqueKey]}
+                          Icon={IconComponent}
+                          onToggleExpand={() => toggleExpand(uniqueKey)}
+                          dateStr={dateStr}
+                          shiftKey={shift}
+                          shiftLabel={config.routineMode === 'shifts' ? SHIFT_LABELS[shift] : null}
+                        />
+                      );
+                    });
+                  })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8 pb-2 animate-in fade-in slide-in-from-bottom-4 overflow-hidden">

@@ -33,6 +33,7 @@ export default function Home() {
   ];
 
   const mobileQuickTabs = tabs.filter((tab) => ['week', 'library', 'board', 'stats', 'config'].includes(tab.id));
+  const isClassicLayout = (config.layoutMode || 'immersive') === 'classic';
 
   const overviewCards = useMemo(() => {
     const weeklyPlanned = currentWeek.reduce(
@@ -146,7 +147,8 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-8">
+        <div className={isClassicLayout ? '' : 'xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-8'}>
+          {!isClassicLayout && (
           <aside className="hidden xl:block">
             <div className="sticky top-6 space-y-4">
               <div className="premium-panel rounded-[2rem] p-3">
@@ -190,16 +192,17 @@ export default function Home() {
               </div>
             </div>
           </aside>
+          )}
 
           <section className="min-w-0">
-            <nav className="xl:hidden mb-5 md:mb-6">
-              <div className="premium-panel rounded-[1.6rem] p-2">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar px-1">
+            <nav className={`${isClassicLayout ? 'mb-8 md:mb-10 hidden md:flex justify-center' : 'xl:hidden mb-5 md:mb-6'}`}>
+              <div className={`premium-panel ${isClassicLayout ? 'p-1.5 rounded-[1.4rem] flex w-full max-w-5xl overflow-x-auto gap-1 no-scrollbar' : 'rounded-[1.6rem] p-2'}`}>
+                <div className={`${isClassicLayout ? 'contents' : 'flex gap-2 overflow-x-auto no-scrollbar px-1'}`}>
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`shrink-0 px-4 py-3 rounded-[1rem] text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
+                      className={`${isClassicLayout ? 'flex-1 min-w-[100px] py-3 rounded-[1rem]' : 'shrink-0 px-4 py-3 rounded-[1rem]'} text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
                         activeTab === tab.id
                           ? 'bg-primary text-primary-foreground shadow-[0_12px_30px_rgba(0,0,0,0.16)]'
                           : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
@@ -213,7 +216,7 @@ export default function Home() {
               </div>
             </nav>
 
-            <main className="premium-panel rounded-[2rem] md:rounded-[2.2rem] p-3 sm:p-4 md:p-5 xl:p-6">
+            <main className={isClassicLayout ? '' : 'premium-panel rounded-[2rem] md:rounded-[2.2rem] p-3 sm:p-4 md:p-5 xl:p-6'}>
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.22 }}>
                   {activeTab === 'week' && <WeekView />}
@@ -246,7 +249,7 @@ export default function Home() {
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/88 backdrop-blur-2xl border-t border-border z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.14)]">
         <div className="grid grid-cols-5 gap-1 px-2 py-2">
-          {mobileQuickTabs.map((tab) => (
+          {(isClassicLayout ? tabs.slice(0, 5) : mobileQuickTabs).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}

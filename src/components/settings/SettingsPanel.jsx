@@ -225,6 +225,32 @@ const SettingsPanel = () => {
         />
 
         <SettingsItem
+          icon={LayoutTemplate}
+          title={t('layoutMode') || 'Layout'}
+          desc={t('layoutModeDesc') || 'Escolha entre o formato novo e o visual anterior'}
+          action={(
+            <div className="flex bg-secondary rounded-lg p-1 border border-border">
+              <button
+                onClick={() => actions.setConfig({ ...config, layoutMode: 'immersive' })}
+                className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                  (config.layoutMode || 'immersive') === 'immersive' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {t('layoutImmersive') || 'Novo'}
+              </button>
+              <button
+                onClick={() => actions.setConfig({ ...config, layoutMode: 'classic' })}
+                className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                  (config.layoutMode || 'immersive') === 'classic' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {t('layoutClassic') || 'Anterior'}
+              </button>
+            </div>
+          )}
+        />
+
+        <SettingsItem
           icon={ImageIcon}
           title={t('backgroundImage') || 'Imagem de Fundo'}
           desc={t('backgroundDesc') || 'Use um link ou envie uma imagem do seu dispositivo'}
