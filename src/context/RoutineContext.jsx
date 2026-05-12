@@ -16,6 +16,18 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://my-routine-app-jxx7.onr
 const FIXED_SUNDAY = { id: 'pausa', name: 'Pausa', iconName: 'Moon', theme: 'slate', fixed: true };
 const DB_KEY = 'routine_db_v12';
 const LEGACY_DB_KEY = 'routine_db_v11';
+const BACKUP_KEY = 'routine_db_v12_backups';
+const USER_KEY = 'routine_user';
+const TOKEN_KEY = 'auth_token';
+
+const readJSON = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
 
 const getConfiguredShifts = (config) =>
   config?.routineMode === 'shifts'
@@ -23,22 +35,6 @@ const getConfiguredShifts = (config) =>
       ? config.activeShifts
       : ['morning']
     : ['default'];
-
-const getLocalDB = () => {
-  try {
-    return JSON.parse(localStorage.getItem(DB_KEY)) || JSON.parse(localStorage.getItem(LEGACY_DB_KEY)) || {};
-  } catch (e) {
-    return {};
-  }
-};
-
-const getLocalUser = () => {
-  try {
-    return JSON.parse(localStorage.getItem('routine_user')) || null;
-  } catch (e) {
-    return null;
-  }
-};
 
 const normalizeConfig = (savedConfig = {}) => ({
   theme: 'dark',
@@ -58,15 +54,64 @@ const normalizeConfig = (savedConfig = {}) => ({
   ...savedConfig,
 });
 
+const normalizeSnapshot = (snapshot = {}, configFallback = {}) => {
+  const nextConfig = normalizeConfig(snapshot.config || configFallback);
+  const nextShifts = getConfiguredShifts(nextConfig);
+
+  return {
+    activities: Array.isArray(snapshot.activities) ? snapshot.activities : [],
+    currentWeek: normalizeWeekData(snapshot.currentWeek, nextShifts),
+    history: snapshot.history && typeof snapshot.history === 'object' ? snapshot.history : {},
+    goals: Array.isArray(snapshot.goals) ? snapshot.goals : [],
+    config: nextConfig,
+    canvasNodes: Array.isArray(snapshot.canvasNodes) ? snapshot.canvasNodes : [],
+    cycleCards: Array.isArray(snapshot.cycleCards) ? snapshot.cycleCards : [],
+    meta: {
+      updatedAt: snapshot?.meta?.updatedAt || snapshot?.clientUpdatedAt || null,
+    },
+  };
+};
+
+const hasMeaningfulData = (snapshot) => {
+  const normalized = normalizeSnapshot(snapshot);
+  return (
+    normalized.activities.length > 0 ||
+    normalized.goals.length > 0 ||
+    normalized.canvasNodes.length > 0 ||
+    normalized.cycleCards.length > 0 ||
+    Object.keys(normalized.history).length > 0 ||
+    normalized.currentWeek.some((day) =>
+      Object.values(day || {}).some((slot) => Array.isArray(slot) && slot.length > 0),
+    )
+  );
+};
+
+const getSnapshotTimestamp = (snapshot) =>
+  Date.parse(snapshot?.meta?.updatedAt || snapshot?.clientUpdatedAt || 0) || 0;
+
+const getLocalDB = () => {
+  const primaryRaw = readJSON(DB_KEY, null) || readJSON(LEGACY_DB_KEY, null) || {};
+  const primary = normalizeSnapshot(primaryRaw);
+  if (hasMeaningfulData(primary)) return primary;
+
+  const backups = readJSON(BACKUP_KEY, []);
+  const latestBackup = Array.isArray(backups)
+    ? backups.map((entry) => normalizeSnapshot(entry?.data)).find(hasMeaningfulData)
+    : null;
+
+  return latestBackup || primary;
+};
+
+const getLocalUser = () => readJSON(USER_KEY, null);
+
 export const RoutineProvider = ({ children }) => {
   const db = getLocalDB();
   const initialConfig = normalizeConfig(db.config);
-  const initialShifts = getConfiguredShifts(initialConfig);
 
   const [user, setUser] = useState(getLocalUser);
-  const [token, setToken] = useState(() => localStorage.getItem('auth_token') || null);
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || null);
   const [activitiesPool, setActivitiesPool] = useState(() => db.activities || []);
-  const [currentWeek, setCurrentWeek] = useState(() => normalizeWeekData(db.currentWeek, initialShifts));
+  const [currentWeek, setCurrentWeek] = useState(() => normalizeWeekData(db.currentWeek, getConfiguredShifts(initialConfig)));
   const [history, setHistory] = useState(() => db.history || {});
   const [goals, setGoals] = useState(() => db.goals || []);
   const [canvasNodes, setCanvasNodes] = useState(() => db.canvasNodes || []);
@@ -81,34 +126,46 @@ export const RoutineProvider = ({ children }) => {
 
   const t = (key) => TRANSLATIONS[config.lang || 'pt'][key] || key;
 
+  const buildSnapshot = (overrides = {}) => ({
+    activities: overrides.activities ?? activitiesPool,
+    currentWeek: overrides.currentWeek ?? currentWeek,
+    history: overrides.history ?? history,
+    goals: overrides.goals ?? goals,
+    config: overrides.config ?? config,
+    canvasNodes: overrides.canvasNodes ?? canvasNodes,
+    cycleCards: overrides.cycleCards ?? cycleCards,
+    meta: {
+      updatedAt: overrides.updatedAt ?? lastChangeAtRef.current ?? new Date().toISOString(),
+    },
+  });
+
+  const persistLocalSnapshot = (snapshot) => {
+    const normalized = normalizeSnapshot(snapshot, config);
+    localStorage.setItem(DB_KEY, JSON.stringify(normalized));
+
+    const backups = readJSON(BACKUP_KEY, []);
+    const savedAt = normalized.meta.updatedAt || new Date().toISOString();
+    const nextBackups = [
+      { savedAt, data: normalized },
+      ...backups.filter((entry) => entry?.savedAt !== savedAt),
+    ].slice(0, 5);
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(nextBackups));
+  };
+
   const applyRemoteSnapshot = (snapshot = {}, configFallback = config) => {
-    const nextConfig = normalizeConfig(snapshot.config || configFallback);
-    const nextShifts = getConfiguredShifts(nextConfig);
-
+    const normalized = normalizeSnapshot(snapshot, configFallback);
     skipNextTouchRef.current = true;
-    lastChangeAtRef.current = snapshot?.meta?.updatedAt || lastChangeAtRef.current || new Date().toISOString();
+    lastChangeAtRef.current = normalized.meta.updatedAt || lastChangeAtRef.current || new Date().toISOString();
 
-    setActivitiesPool(Array.isArray(snapshot.activities) ? snapshot.activities : []);
-    setCurrentWeek(normalizeWeekData(snapshot.currentWeek, nextShifts));
-    setHistory(snapshot.history || {});
-    setGoals(Array.isArray(snapshot.goals) ? snapshot.goals : []);
-    setCanvasNodes(Array.isArray(snapshot.canvasNodes) ? snapshot.canvasNodes : []);
-    setCycleCards(Array.isArray(snapshot.cycleCards) ? snapshot.cycleCards : []);
-    setConfig(nextConfig);
+    setActivitiesPool(normalized.activities);
+    setCurrentWeek(normalized.currentWeek);
+    setHistory(normalized.history);
+    setGoals(normalized.goals);
+    setCanvasNodes(normalized.canvasNodes);
+    setCycleCards(normalized.cycleCards);
+    setConfig(normalized.config);
 
-    localStorage.setItem(
-      DB_KEY,
-      JSON.stringify({
-        activities: Array.isArray(snapshot.activities) ? snapshot.activities : [],
-        currentWeek: normalizeWeekData(snapshot.currentWeek, nextShifts),
-        history: snapshot.history || {},
-        goals: Array.isArray(snapshot.goals) ? snapshot.goals : [],
-        config: nextConfig,
-        canvasNodes: Array.isArray(snapshot.canvasNodes) ? snapshot.canvasNodes : [],
-        cycleCards: Array.isArray(snapshot.cycleCards) ? snapshot.cycleCards : [],
-        meta: { updatedAt: snapshot?.meta?.updatedAt || lastChangeAtRef.current },
-      }),
-    );
+    persistLocalSnapshot(normalized);
   };
 
   useEffect(() => {
@@ -127,26 +184,56 @@ export const RoutineProvider = ({ children }) => {
 
     const syncWithServer = async () => {
       const wakeTimer = setTimeout(() => setIsServerWaking(true), 2500);
+
       try {
         const res = await fetch(`${API_URL}/data`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         clearTimeout(wakeTimer);
         setIsServerWaking(false);
 
-        if (res.ok) {
-          const data = await res.json();
-          const localDb = getLocalDB();
-          const serverUpdatedAt = Date.parse(data?.meta?.updatedAt || 0) || 0;
-          const localUpdatedAt = Date.parse(localDb?.meta?.updatedAt || 0) || 0;
-          const shouldUseServer = serverUpdatedAt > localUpdatedAt;
+        if (!res.ok) return;
 
-          if (!shouldUseServer) {
-            setHasCompletedInitialSync(true);
-            return;
+        const serverData = normalizeSnapshot(await res.json(), config);
+        const localData = getLocalDB();
+        const serverHasData = hasMeaningfulData(serverData);
+        const localHasData = hasMeaningfulData(localData);
+
+        if (!serverHasData && localHasData) {
+          applyRemoteSnapshot(localData, config);
+          fetch(`${API_URL}/data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(localData),
+          }).catch(() => {});
+          return;
+        }
+
+        if (serverHasData && localHasData) {
+          const selectedData = getSnapshotTimestamp(serverData) >= getSnapshotTimestamp(localData)
+            ? serverData
+            : localData;
+
+          applyRemoteSnapshot(selectedData, config);
+
+          if (selectedData === localData) {
+            fetch(`${API_URL}/data`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify(localData),
+            }).catch(() => {});
           }
+          return;
+        }
 
-          applyRemoteSnapshot(data, config);
+        if (serverHasData) {
+          applyRemoteSnapshot(serverData, config);
+          return;
+        }
+
+        if (localHasData) {
+          applyRemoteSnapshot(localData, config);
         }
       } catch (error) {
         clearTimeout(wakeTimer);
@@ -224,32 +311,11 @@ export const RoutineProvider = ({ children }) => {
   }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards, hasCompletedInitialSync]);
 
   useEffect(() => {
-    if (user) {
-      const nextDb = {
-        activities: activitiesPool,
-        currentWeek,
-        history,
-        goals,
-        config,
-        canvasNodes,
-        cycleCards,
-        meta: { updatedAt: lastChangeAtRef.current || new Date().toISOString() },
-      };
-      localStorage.setItem(DB_KEY, JSON.stringify(nextDb));
-    }
+    const nextDb = buildSnapshot();
+    persistLocalSnapshot(nextDb);
 
     if (token && hasCompletedInitialSync) {
       const timer = setTimeout(() => {
-        const nextDb = {
-          activities: activitiesPool,
-          currentWeek,
-          history,
-          goals,
-          config,
-          canvasNodes,
-          cycleCards,
-          meta: { updatedAt: lastChangeAtRef.current || new Date().toISOString() },
-        };
         fetch(`${API_URL}/data`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -258,7 +324,9 @@ export const RoutineProvider = ({ children }) => {
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards, user, token, hasCompletedInitialSync]);
+
+    return undefined;
+  }, [activitiesPool, currentWeek, history, goals, config, canvasNodes, cycleCards, token, hasCompletedInitialSync]);
 
   const updateDayData = (dateStr, shiftKey, activityId, newData, activitySnapshot) => {
     const key = buildHistoryKey(dateStr, shiftKey, activityId);
@@ -311,10 +379,7 @@ export const RoutineProvider = ({ children }) => {
 
       targetShifts.forEach((shift) => {
         const shouldPreserveSlot = isPastDay || isTodayDate;
-
-        dayObj[shift] = shouldPreserveSlot
-          ? (currentWeek?.[i]?.[shift] || []).slice()
-          : [];
+        dayObj[shift] = shouldPreserveSlot ? (currentWeek?.[i]?.[shift] || []).slice() : [];
       });
 
       return dayObj;
@@ -416,6 +481,7 @@ export const RoutineProvider = ({ children }) => {
       alert('Limite de sorteios semanais atingido!');
       return;
     }
+
     setIsShuffling(true);
     await new Promise((resolve) => setTimeout(resolve, 400));
     executeShuffle();
@@ -440,14 +506,26 @@ export const RoutineProvider = ({ children }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      const remoteSnapshot = data.data && typeof data.data === 'object' ? data.data : {};
-      applyRemoteSnapshot(remoteSnapshot, config);
-      setHasCompletedInitialSync(true);
-      hasCheckedWeekRef.current = false;
+      const localData = getLocalDB();
+      const serverData = normalizeSnapshot(data.data, config);
+      const selectedData =
+        hasMeaningfulData(serverData) && getSnapshotTimestamp(serverData) >= getSnapshotTimestamp(localData)
+          ? serverData
+          : localData;
+
       setToken(data.token);
       setUser(data.user);
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('routine_user', JSON.stringify(data.user));
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+      if (hasMeaningfulData(selectedData)) {
+        applyRemoteSnapshot(selectedData, config);
+      } else {
+        applyRemoteSnapshot(serverData, config);
+      }
+
+      setHasCompletedInitialSync(true);
+      hasCheckedWeekRef.current = false;
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
@@ -534,7 +612,8 @@ export const RoutineProvider = ({ children }) => {
           login,
           register,
           logout: () => {
-            localStorage.clear();
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
             window.location.reload();
           },
           saveActivity: (activity) =>
@@ -554,11 +633,12 @@ export const RoutineProvider = ({ children }) => {
                 activityId: activity.id,
                 x: Math.random() * 100 + 50,
                 y: Math.random() * 100 + 50,
-                tasks: activity.defaultTasks?.map((task) => ({
-                  id: crypto.randomUUID(),
-                  text: task,
-                  completed: false,
-                })) || [],
+                tasks:
+                  activity.defaultTasks?.map((task) => ({
+                    id: crypto.randomUUID(),
+                    text: task,
+                    completed: false,
+                  })) || [],
               },
             ]),
           addStickyNode: () =>
