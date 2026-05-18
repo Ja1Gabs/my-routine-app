@@ -443,17 +443,6 @@ const DayCard = ({
           {activity.name}
         </h2>
 
-        <div className="mt-3 relative z-10">
-          <div className="flex items-center justify-between rounded-xl bg-background/55 border border-border px-3 py-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
-              {t('tasksTitle')}
-            </span>
-            <span className="text-xs font-semibold text-foreground">
-              {dayTasks.filter((task) => task.completed).length}/{dayTasks.length}
-            </span>
-          </div>
-        </div>
-
         <div className="flex gap-2 mt-auto pt-3 relative z-10">
           <motion.button
             whileTap={{ scale: isPast && !isCompleted ? 1 : 0.95 }}
