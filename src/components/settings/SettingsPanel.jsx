@@ -55,8 +55,8 @@ const SettingsPanel = () => {
     : notificationState?.permission === 'denied'
       ? 'A permissao foi bloqueada no navegador. Reative manualmente nas configuracoes do site.'
       : notificationState?.subscribed
-        ? 'Este dispositivo ja esta inscrito para receber notificacoes.'
-        : 'Ative para receber alertas mesmo com o site fechado.';
+        ? 'Ativo neste dispositivo: lembretes aleatorios de manha, tarde e noite.'
+        : 'Ative para receber 3 lembretes por dia, em horarios aleatorios e longe da meia-noite.';
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-6 md:pb-8">
@@ -324,7 +324,7 @@ const SettingsPanel = () => {
                 disabled={!notificationState?.canAskPermission || notificationState?.loading || notificationState?.subscribed}
                 className="flex-1 sm:flex-none px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
               >
-                {notificationState?.loading ? 'Processando...' : 'Ativar'}
+                {notificationState?.loading ? 'Processando...' : 'Ativar 3 lembretes'}
               </button>
 
               <button

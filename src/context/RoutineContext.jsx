@@ -196,10 +196,7 @@ const isHistoricalDateComplete = (history, dateStr) => {
   return entries.length > 0 && entries.every((item) => Boolean(item.value?.completed));
 };
 
-const isDateCompleteForStats = (history, week, dateStr) =>
-  getWeekIndexFromDate(dateStr) >= 0
-    ? isPlannedDateComplete(history, week, dateStr)
-    : isHistoricalDateComplete(history, dateStr);
+const getCurrentWeekDates = () => Array.from({ length: 7 }, (_, index) => getCurrentWeekDateStr(index));
 
 const stripImagesFromHistory = (history = {}) =>
   Object.fromEntries(
@@ -942,28 +939,21 @@ export const RoutineProvider = ({ children }) => {
 
   const stats = useMemo(() => {
     let daily = 0;
-    let dateCursor = new Date();
-    while (isDateCompleteForStats(history, currentWeek, format(dateCursor, 'yyyy-MM-dd'))) {
+    let dateCursor = startOfToday();
+
+    while (getWeekIndexFromDate(format(dateCursor, 'yyyy-MM-dd')) >= 0 && isPlannedDateComplete(history, currentWeek, format(dateCursor, 'yyyy-MM-dd'))) {
       daily += 1;
       dateCursor = subDays(dateCursor, 1);
     }
 
-    const weekStarts = {};
-    Object.keys(completedDays).forEach((dateStr) => {
-      if (!completedDays[dateStr]) return;
-      const weekStart = format(startOfWeek(parseISO(dateStr), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      weekStarts[weekStart] = weekStarts[weekStart] || [];
-      weekStarts[weekStart].push(dateStr);
-    });
-
-    const weekly = Object.values(weekStarts).filter((dates) => dates.length === 7).length;
+    const weekly = getCurrentWeekDates().every((dateStr) => isPlannedDateComplete(history, currentWeek, dateStr)) ? 1 : 0;
 
     return {
       daily,
       weekly,
       total: Object.values(history).filter((entry) => entry.completed).length,
     };
-  }, [completedDays, currentWeek, history]);
+  }, [currentWeek, history]);
 
   const resolvedGoals = useMemo(() => {
     return goals.map((rawGoal) => {

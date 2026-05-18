@@ -246,32 +246,36 @@ export default function Home() {
         </div>
       </div>
 
-      {activeTab !== 'config' && (
-        <button
-          type="button"
-          onClick={() => setActiveTab('config')}
-          className="md:hidden fixed right-3 bottom-[5.15rem] z-50 inline-flex items-center gap-2 rounded-full border border-border bg-card/92 px-4 py-3 text-xs font-black text-foreground shadow-[0_18px_45px_rgba(0,0,0,0.22)] backdrop-blur-2xl active:scale-95"
-          aria-label="Abrir configuracoes"
-        >
-          <Settings size={16} className="text-primary" />
-          Config
-        </button>
-      )}
-
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/88 backdrop-blur-2xl border-t border-border z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.14)]">
-        <div className="flex gap-1 px-2 py-2 overflow-x-auto no-scrollbar">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`shrink-0 min-w-[76px] flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl transition-all min-h-[56px] ${
-                activeTab === tab.id ? 'text-primary bg-primary/12 shadow-sm' : 'text-muted-foreground hover:bg-secondary/50'
-              }`}
-            >
-              <tab.icon size={18} className={activeTab === tab.id ? 'fill-primary/20' : ''} />
-              <span className="text-[9px] font-bold leading-none text-center">{t(tab.label)}</span>
-            </button>
-          ))}
+        <div className="flex items-center gap-2 px-2 py-2">
+          <div className="flex flex-1 gap-1 overflow-x-auto no-scrollbar pr-1">
+            {tabs.filter((tab) => tab.id !== 'config').map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`shrink-0 min-w-[72px] flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl transition-all min-h-[56px] ${
+                  activeTab === tab.id ? 'text-primary bg-primary/12 shadow-sm' : 'text-muted-foreground hover:bg-secondary/50'
+                }`}
+              >
+                <tab.icon size={18} className={activeTab === tab.id ? 'fill-primary/20' : ''} />
+                <span className="text-[9px] font-bold leading-none text-center">{t(tab.label)}</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('config')}
+            className={`shrink-0 min-w-[64px] min-h-[56px] rounded-2xl border px-2 py-2 flex flex-col items-center justify-center gap-1 transition-all shadow-[0_12px_30px_rgba(0,0,0,0.16)] ${
+              activeTab === 'config'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-background/70 text-foreground hover:bg-secondary'
+            }`}
+            aria-label="Abrir configuracoes"
+          >
+            <Settings size={18} className={activeTab === 'config' ? 'text-primary-foreground' : 'text-primary'} />
+            <span className="text-[9px] font-black leading-none">Config</span>
+          </button>
         </div>
       </nav>
     </div>
