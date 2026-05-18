@@ -92,6 +92,7 @@ const DayCard = ({
   const libraryTasks = Array.isArray(activity?.defaultTasks) ? activity.defaultTasks.filter(Boolean) : [];
   const currentTaskLookup = new Set(dayTasks.map((task) => normalizeTaskText(task.text)));
   const suggestedTasks = libraryTasks.filter((task) => !currentTaskLookup.has(normalizeTaskText(task)));
+  const assignedTaskText = activity?.assignedTask?.trim() || '';
   const assignedTaskAlreadyTracked = activity?.assignedTask
     ? currentTaskLookup.has(normalizeTaskText(activity.assignedTask))
     : false;
@@ -442,6 +443,16 @@ const DayCard = ({
         <h2 className={`text-[1.3rem] font-bold mb-auto tracking-tight relative z-10 ${theme.title} ${isCompleted ? 'line-through decoration-muted-foreground' : ''}`}>
           {activity.name}
         </h2>
+
+        {assignedTaskText && (
+          <div className="mt-3 relative z-10">
+            <div className="inline-flex max-w-full items-center rounded-xl bg-background/65 border border-border px-3 py-2">
+              <span className="truncate text-[11px] font-semibold text-muted-foreground">
+                {assignedTaskText}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 mt-auto pt-3 relative z-10">
           <motion.button
