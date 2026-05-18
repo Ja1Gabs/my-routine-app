@@ -41,7 +41,7 @@ export const buildEmptyWeek = (shifts = ['default']) =>
 
 export const getHistoryEntry = (history, dateStr, shiftKey = 'default', activityId = 'default') => {
   const nextKey = buildHistoryKey(dateStr, shiftKey, activityId);
-  return history?.[nextKey] || history?.[`${dateStr}_${shiftKey}`] || {};
+  return history?.[nextKey] || (activityId === 'default' ? history?.[`${dateStr}_${shiftKey}`] : null) || {};
 };
 
 export const listHistoryEntriesForDate = (history, dateStr) =>

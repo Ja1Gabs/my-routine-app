@@ -12,7 +12,6 @@ import {
 import {
   buildEmptyWeek,
   buildHistoryKey,
-  getHistoryEntry,
   listHistoryEntriesForDate,
   normalizeWeekData,
   parseHistoryKey,
@@ -155,6 +154,52 @@ const getWeekIndexFromDate = (dateStr) => {
 
 const getExactHistoryEntry = (history, dateStr, shiftKey = 'default', activityId = 'default') =>
   history?.[buildHistoryKey(dateStr, shiftKey, activityId)] || null;
+
+const getCurrentWeekStartDate = () => startOfWeek(startOfToday(), { weekStartsOn: 1 });
+
+const getCurrentWeekDateStr = (index) => format(addDays(getCurrentWeekStartDate(), index), 'yyyy-MM-dd');
+
+const getPlannedEntriesForDate = (week, dateStr) => {
+  const weekIndex = getWeekIndexFromDate(dateStr);
+  if (weekIndex < 0 || weekIndex >= week.length) return [];
+
+  return Object.entries(week[weekIndex] || {}).flatMap(([shiftKey, slot]) =>
+    (Array.isArray(slot) ? slot : [])
+      .filter((activity) => activity?.id)
+      .map((activity) => ({
+        shiftKey,
+        activityId: activity.id,
+      })),
+  );
+};
+
+const isPlannedDateComplete = (history, week, dateStr) => {
+  const plannedEntries = getPlannedEntriesForDate(week, dateStr);
+  if (plannedEntries.length === 0) return false;
+
+  return plannedEntries.every((entry) =>
+    Boolean(getExactHistoryEntry(history, dateStr, entry.shiftKey, entry.activityId)?.completed),
+  );
+};
+
+const hasHistoryContent = (entry = {}) =>
+  Boolean(
+    entry?.completed ||
+      entry?.notes ||
+      entry?.image ||
+      entry?.activity ||
+      (Array.isArray(entry?.tasks) && entry.tasks.length > 0),
+  );
+
+const isHistoricalDateComplete = (history, dateStr) => {
+  const entries = listHistoryEntriesForDate(history, dateStr).filter((item) => hasHistoryContent(item.value));
+  return entries.length > 0 && entries.every((item) => Boolean(item.value?.completed));
+};
+
+const isDateCompleteForStats = (history, week, dateStr) =>
+  getWeekIndexFromDate(dateStr) >= 0
+    ? isPlannedDateComplete(history, week, dateStr)
+    : isHistoricalDateComplete(history, dateStr);
 
 const stripImagesFromHistory = (history = {}) =>
   Object.fromEntries(
@@ -356,11 +401,13 @@ export const RoutineProvider = ({ children }) => {
 
   const refreshNotificationState = async () => {
     const supported = browserSupportsPush();
+    const permission = browserCanAskNotificationPermission() ? Notification.permission : 'default';
+
     if (!supported) {
       setNotificationState({
         canAskPermission: browserCanAskNotificationPermission(),
         supported: false,
-        permission: 'denied',
+        permission,
         subscribed: false,
         loading: false,
       });
@@ -374,7 +421,7 @@ export const RoutineProvider = ({ children }) => {
         ...prev,
         canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
-        permission: Notification.permission,
+        permission: browserCanAskNotificationPermission() ? Notification.permission : 'default',
         subscribed: Boolean(subscription),
         loading: false,
       }));
@@ -383,7 +430,7 @@ export const RoutineProvider = ({ children }) => {
         ...prev,
         canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
-        permission: Notification.permission,
+        permission: browserCanAskNotificationPermission() ? Notification.permission : 'default',
         subscribed: false,
         loading: false,
       }));
@@ -549,7 +596,7 @@ export const RoutineProvider = ({ children }) => {
 
   const updateDayData = (dateStr, shiftKey, activityId, newData, activitySnapshot) => {
     const key = buildHistoryKey(dateStr, shiftKey, activityId);
-    const previous = getHistoryEntry(history, dateStr, shiftKey, activityId);
+    const previous = getExactHistoryEntry(history, dateStr, shiftKey, activityId) || {};
     setHistory((prev) => ({
       ...prev,
       [key]: {
@@ -563,7 +610,7 @@ export const RoutineProvider = ({ children }) => {
 
   const toggleComplete = (dateStr, shiftKey, activityId, activitySnapshot) => {
     const key = buildHistoryKey(dateStr, shiftKey, activityId);
-    const previous = getHistoryEntry(history, dateStr, shiftKey, activityId);
+    const previous = getExactHistoryEntry(history, dateStr, shiftKey, activityId) || {};
     setHistory((prev) => ({
       ...prev,
       [key]: {
@@ -873,45 +920,21 @@ export const RoutineProvider = ({ children }) => {
 
   const completedDays = useMemo(() => {
     const datesObj = {};
-    const historyByDate = {};
+    const knownDates = new Set(Array.from({ length: 7 }, (_, index) => getCurrentWeekDateStr(index)));
 
-    Object.entries(history || {}).forEach(([key, value]) => {
+    Object.keys(history || {}).forEach((key) => {
       const parsed = parseHistoryKey(key);
       if (!parsed.dateStr) return;
-      historyByDate[parsed.dateStr] = historyByDate[parsed.dateStr] || [];
-      historyByDate[parsed.dateStr].push({ ...parsed, value });
+      knownDates.add(parsed.dateStr);
     });
 
-    const knownDates = new Set([
-      ...Object.keys(historyByDate),
-      ...currentWeek.map((_, index) => format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), index), 'yyyy-MM-dd')),
-    ]);
-
     knownDates.forEach((dateStr) => {
-      const weekIndex = getWeekIndexFromDate(dateStr);
-      const plannedDay = weekIndex >= 0 && weekIndex < currentWeek.length ? currentWeek[weekIndex] || {} : null;
-
-      if (plannedDay) {
-        const plannedEntries = Object.entries(plannedDay).flatMap(([shiftKey, slot]) =>
-          (Array.isArray(slot) ? slot : []).map((activity) => ({
-            shiftKey,
-            activityId: activity.id,
-          })),
-        );
-
-        if (plannedEntries.length > 0) {
-          const plannedCompleted = plannedEntries.every((entry) =>
-            Boolean(getExactHistoryEntry(history, dateStr, entry.shiftKey, entry.activityId)?.completed),
-          );
-
-          datesObj[dateStr] = plannedCompleted;
-          return;
-        }
+      if (getWeekIndexFromDate(dateStr) >= 0) {
+        datesObj[dateStr] = isPlannedDateComplete(history, currentWeek, dateStr);
+        return;
       }
 
-      const dayEntries = historyByDate[dateStr] || [];
-      const plannedCompleted = dayEntries.length > 0 && dayEntries.every((entry) => entry.value?.completed);
-        datesObj[dateStr] = plannedCompleted;
+      datesObj[dateStr] = isHistoricalDateComplete(history, dateStr);
     });
 
     return datesObj;
@@ -920,7 +943,7 @@ export const RoutineProvider = ({ children }) => {
   const stats = useMemo(() => {
     let daily = 0;
     let dateCursor = new Date();
-    while (completedDays[format(dateCursor, 'yyyy-MM-dd')]) {
+    while (isDateCompleteForStats(history, currentWeek, format(dateCursor, 'yyyy-MM-dd'))) {
       daily += 1;
       dateCursor = subDays(dateCursor, 1);
     }
@@ -940,7 +963,7 @@ export const RoutineProvider = ({ children }) => {
       weekly,
       total: Object.values(history).filter((entry) => entry.completed).length,
     };
-  }, [completedDays, history]);
+  }, [completedDays, currentWeek, history]);
 
   const resolvedGoals = useMemo(() => {
     return goals.map((rawGoal) => {

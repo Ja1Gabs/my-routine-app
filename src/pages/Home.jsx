@@ -246,6 +246,18 @@ export default function Home() {
         </div>
       </div>
 
+      {activeTab !== 'config' && (
+        <button
+          type="button"
+          onClick={() => setActiveTab('config')}
+          className="md:hidden fixed right-3 bottom-[5.15rem] z-50 inline-flex items-center gap-2 rounded-full border border-border bg-card/92 px-4 py-3 text-xs font-black text-foreground shadow-[0_18px_45px_rgba(0,0,0,0.22)] backdrop-blur-2xl active:scale-95"
+          aria-label="Abrir configuracoes"
+        >
+          <Settings size={16} className="text-primary" />
+          Config
+        </button>
+      )}
+
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/88 backdrop-blur-2xl border-t border-border z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.14)]">
         <div className="flex gap-1 px-2 py-2 overflow-x-auto no-scrollbar">
           {tabs.map((tab) => (
