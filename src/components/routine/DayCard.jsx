@@ -557,6 +557,21 @@ const DayCard = ({
             className="fixed inset-0 z-[90] bg-black/58 backdrop-blur-md p-3 sm:p-5 md:p-8 flex items-center justify-center"
             onClick={onToggleExpand}
           >
+            {dayImage && (
+              <>
+                <div
+                  className="absolute inset-0 opacity-25 pointer-events-none"
+                  style={{
+                    backgroundImage: `url(${dayImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    filter: 'blur(54px)',
+                    transform: 'scale(1.06)',
+                  }}
+                />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_36%),linear-gradient(180deg,rgba(7,11,20,0.42),rgba(7,11,20,0.78))] pointer-events-none" />
+              </>
+            )}
             {modalContent}
           </motion.div>
         )}
