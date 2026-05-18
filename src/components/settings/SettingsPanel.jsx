@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Moon, Sun, LogOut, ShieldAlert, Calendar, Globe, Image as ImageIcon, LayoutTemplate, Layers3, RefreshCw } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
+import { useToast } from '../ui/ToastProvider';
 
 const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
   <div className="flex items-center justify-between gap-4 p-4 bg-card border border-border rounded-xl shadow-sm">
@@ -19,6 +20,7 @@ const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
 
 const SettingsPanel = () => {
   const { user, config, actions, activitiesPool, t } = useRoutine();
+  const toast = useToast();
   const backgroundInputRef = useRef(null);
   const themePresets = [
     { id: 'default', label: t('themeDefault') || 'Padrao' },
@@ -299,8 +301,16 @@ const SettingsPanel = () => {
           action={(
             <button
               onClick={async () => {
-                const ok = await actions.syncNow?.();
-                window.alert(ok ? (t('syncSuccess') || 'Sincronizado com sucesso') : (t('syncError') || 'Nao foi possivel sincronizar agora'));
+                const result = await actions.syncNow?.();
+                if (result?.ok) {
+                  toast.success(t('syncSuccess') || 'Sincronizado com sucesso', 'Seus dados atuais foram enviados para a sua conta.');
+                  return;
+                }
+
+                toast.error(
+                  t('syncError') || 'Nao foi possivel sincronizar agora',
+                  result?.error || 'Tente novamente em alguns instantes.',
+                );
               }}
               className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
             >
@@ -314,7 +324,13 @@ const SettingsPanel = () => {
           title={t('reset')}
           danger
           action={(
-            <button onClick={() => { if (window.confirm('Deseja resetar todos os dados locais?')) { localStorage.clear(); window.location.reload(); } }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg transition-colors active:scale-95">
+            <button onClick={() => {
+              const confirmed = window.confirm('Deseja resetar todos os dados locais?');
+              if (!confirmed) return;
+              toast.info('Resetando dados locais', 'A aplicação será recarregada em seguida.');
+              localStorage.clear();
+              window.location.reload();
+            }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-lg transition-colors active:scale-95">
               Reset
             </button>
           )}

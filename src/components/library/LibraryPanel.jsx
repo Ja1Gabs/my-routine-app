@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { THEMES } from '../../entities/theme';
+import { useToast } from '../ui/ToastProvider';
 
 const ICON_MAP = { Code2, Coffee, Rocket, Music, Palette, Moon, Book, Dumbbell, Gamepad, Heart, Briefcase };
 
@@ -282,6 +283,7 @@ const ActivityEditor = ({ initialData, onSave, onCancel }) => {
 
 const LibraryPanel = () => {
   const { activitiesPool, actions, t } = useRoutine();
+  const toast = useToast();
   const [editingId, setEditingId] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const importInputRef = useRef(null);
@@ -313,7 +315,7 @@ const LibraryPanel = () => {
       const importedActivities = Array.isArray(parsed) ? parsed : parsed.activities;
 
       if (!Array.isArray(importedActivities) || importedActivities.length === 0) {
-        alert('Arquivo sem cartas validas para importar.');
+        toast.warning('Importação vazia', 'O arquivo não trouxe cartas válidas para a biblioteca.');
         return;
       }
 
@@ -339,9 +341,9 @@ const LibraryPanel = () => {
         });
       }
 
-      alert(`${importedActivities.length} carta(s) importada(s) para a biblioteca.`);
+      toast.success('Biblioteca importada', `${importedActivities.length} carta(s) foram adicionadas à sua biblioteca.`);
     } catch (error) {
-      alert('Nao foi possivel importar esse arquivo.');
+      toast.error('Falha ao importar', 'Nao foi possivel importar esse arquivo.');
     } finally {
       event.target.value = '';
     }

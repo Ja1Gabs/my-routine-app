@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { format, subDays, startOfWeek, addDays, isBefore, isSameDay, startOfToday, parseISO } from 'date-fns';
 import { TRANSLATIONS } from '../constants/translations';
+import { useToast } from '../components/ui/ToastProvider';
 import {
   buildEmptyWeek,
   buildHistoryKey,
@@ -36,6 +37,28 @@ const getConfiguredShifts = (config) =>
       : ['morning']
     : ['default'];
 
+const withAssignedTask = (activity) => {
+  if (!activity || typeof activity !== 'object') return activity;
+  if (activity.assignedTask) return activity;
+
+  const defaultTasks = Array.isArray(activity.defaultTasks) ? activity.defaultTasks.filter(Boolean) : [];
+  if (defaultTasks.length === 0) return { ...activity, assignedTask: '' };
+
+  return {
+    ...activity,
+    assignedTask: defaultTasks[Math.floor(Math.random() * defaultTasks.length)],
+  };
+};
+
+const normalizeWeekWithTasks = (week, shifts) =>
+  normalizeWeekData(week, shifts).map((day) => {
+    const nextDay = {};
+    Object.entries(day || {}).forEach(([shiftKey, slot]) => {
+      nextDay[shiftKey] = Array.isArray(slot) ? slot.map(withAssignedTask) : [];
+    });
+    return nextDay;
+  });
+
 const normalizeConfig = (savedConfig = {}) => ({
   theme: 'dark',
   themePreset: 'default',
@@ -61,7 +84,7 @@ const normalizeSnapshot = (snapshot = {}, configFallback = {}) => {
 
   return {
     activities: Array.isArray(snapshot.activities) ? snapshot.activities : [],
-    currentWeek: normalizeWeekData(snapshot.currentWeek, nextShifts),
+    currentWeek: normalizeWeekWithTasks(snapshot.currentWeek, nextShifts),
     history: snapshot.history && typeof snapshot.history === 'object' ? snapshot.history : {},
     goals: Array.isArray(snapshot.goals) ? snapshot.goals : [],
     config: nextConfig,
@@ -106,13 +129,14 @@ const getLocalDB = () => {
 const getLocalUser = () => readJSON(USER_KEY, null);
 
 export const RoutineProvider = ({ children }) => {
+  const toast = useToast();
   const db = getLocalDB();
   const initialConfig = normalizeConfig(db.config);
 
   const [user, setUser] = useState(getLocalUser);
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || null);
   const [activitiesPool, setActivitiesPool] = useState(() => db.activities || []);
-  const [currentWeek, setCurrentWeek] = useState(() => normalizeWeekData(db.currentWeek, getConfiguredShifts(initialConfig)));
+  const [currentWeek, setCurrentWeek] = useState(() => normalizeWeekWithTasks(db.currentWeek, getConfiguredShifts(initialConfig)));
   const [history, setHistory] = useState(() => db.history || {});
   const [goals, setGoals] = useState(() => db.goals || []);
   const [canvasNodes, setCanvasNodes] = useState(() => db.canvasNodes || []);
@@ -141,7 +165,9 @@ export const RoutineProvider = ({ children }) => {
   });
 
   const postSnapshotToServer = async (snapshot, authToken = token) => {
-    if (!authToken) return false;
+    if (!authToken) {
+      return { ok: false, status: 401, error: 'Sessão não encontrada. Entre novamente.' };
+    }
 
     try {
       const res = await fetch(`${API_URL}/data`, {
@@ -149,9 +175,26 @@ export const RoutineProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify(snapshot),
       });
-      return res.ok;
+
+      if (res.ok) {
+        return { ok: true, status: res.status, error: null };
+      }
+
+      let message = 'Nao foi possivel sincronizar agora.';
+      try {
+        const data = await res.json();
+        if (data?.error) message = data.error;
+      } catch (error) {
+        // keep fallback
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        message = 'Sua sessão expirou. Entre novamente para sincronizar.';
+      }
+
+      return { ok: false, status: res.status, error: message };
     } catch (error) {
-      return false;
+      return { ok: false, status: 0, error: 'Servidor indisponível no momento. Tente novamente em instantes.' };
     }
   };
 
@@ -209,7 +252,7 @@ export const RoutineProvider = ({ children }) => {
   }, [config.theme, config.themePreset]);
 
   useEffect(() => {
-    setCurrentWeek((prev) => normalizeWeekData(prev, getConfiguredShifts(config)));
+    setCurrentWeek((prev) => normalizeWeekWithTasks(prev, getConfiguredShifts(config)));
   }, [config.routineMode, config.activeShifts]);
 
   useEffect(() => {
@@ -400,7 +443,7 @@ export const RoutineProvider = ({ children }) => {
 
       targetShifts.forEach((shift) => {
         const shouldPreserveSlot = isPastDay || isTodayDate;
-        dayObj[shift] = shouldPreserveSlot ? (currentWeek?.[i]?.[shift] || []).slice() : [];
+        dayObj[shift] = shouldPreserveSlot ? (currentWeek?.[i]?.[shift] || []).map(withAssignedTask) : [];
       });
 
       return dayObj;
@@ -409,9 +452,10 @@ export const RoutineProvider = ({ children }) => {
     const pushActivity = (dayIndex, shiftKey, activity) => {
       if (dayIndex < 0 || dayIndex > 6 || !targetShifts.includes(shiftKey)) return false;
       const slot = weekPlan[dayIndex][shiftKey];
+      const nextActivity = withAssignedTask(activity);
       if (!Array.isArray(slot) || slot.length >= slotLimit) return false;
-      if (slot.some((item) => item.id === activity.id && item.assignedTask === activity.assignedTask)) return false;
-      slot.push(activity);
+      if (slot.some((item) => item.id === nextActivity.id && item.assignedTask === nextActivity.assignedTask)) return false;
+      slot.push(nextActivity);
       return true;
     };
 
@@ -499,7 +543,7 @@ export const RoutineProvider = ({ children }) => {
 
   const triggerShuffle = async () => {
     if (config.maxShuffles > 0 && config.shufflesUsed >= config.maxShuffles) {
-      alert('Limite de sorteios semanais atingido!');
+      toast.warning('Limite de sorteios atingido', 'Você já usou todos os embaralhos disponíveis nesta semana.');
       return;
     }
 
