@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Moon, Sun, LogOut, ShieldAlert, Calendar, Globe, Image as ImageIcon, LayoutTemplate, Layers3, RefreshCw } from 'lucide-react';
+import { Moon, Sun, LogOut, ShieldAlert, Calendar, Globe, Image as ImageIcon, LayoutTemplate, Layers3, RefreshCw, Bell, Send, BellOff } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 import { useToast } from '../ui/ToastProvider';
 
@@ -19,7 +19,7 @@ const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
 );
 
 const SettingsPanel = () => {
-  const { user, config, actions, activitiesPool, t } = useRoutine();
+  const { user, config, actions, activitiesPool, t, notificationState } = useRoutine();
   const toast = useToast();
   const backgroundInputRef = useRef(null);
   const themePresets = [
@@ -287,6 +287,81 @@ const SettingsPanel = () => {
                 </button>
               </div>
             </div>
+          )}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase ml-1 tracking-widest">Notificacoes</h3>
+
+        <SettingsItem
+          icon={Bell}
+          title="Push no celular"
+          desc={
+            !notificationState?.supported
+              ? 'Disponivel apenas em HTTPS e navegadores com suporte a Push API.'
+              : notificationState?.subscribed
+                ? 'Este dispositivo ja esta inscrito para receber notificacoes.'
+                : 'Ative para receber alertas mesmo com o site fechado.'
+          }
+          action={(
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    await actions.enablePushNotifications?.();
+                    toast.success('Notificacoes ativadas', 'Este dispositivo agora pode receber push notifications do My Routine.');
+                  } catch (error) {
+                    toast.error('Nao foi possivel ativar', error.message);
+                  }
+                }}
+                disabled={!notificationState?.supported || notificationState?.loading || notificationState?.subscribed}
+                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
+              >
+                {notificationState?.loading ? 'Processando...' : 'Ativar'}
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    await actions.disablePushNotifications?.();
+                    toast.info('Notificacoes desativadas', 'O dispositivo foi removido da lista de push notifications.');
+                  } catch (error) {
+                    toast.error('Nao foi possivel desativar', error.message);
+                  }
+                }}
+                disabled={!notificationState?.supported || notificationState?.loading || !notificationState?.subscribed}
+                className="px-4 py-2 bg-secondary hover:bg-border disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-xs font-bold rounded-lg border border-border transition-colors active:scale-95"
+              >
+                <span className="inline-flex items-center gap-1.5"><BellOff size={12} /> Desativar</span>
+              </button>
+            </div>
+          )}
+        />
+
+        <SettingsItem
+          icon={Send}
+          title="Enviar notificacao de teste"
+          desc={
+            notificationState?.subscribed
+              ? 'Dispara um push de teste para confirmar que o navegador do celular esta recebendo.'
+              : 'Ative as notificacoes primeiro para testar.'
+          }
+          action={(
+            <button
+              onClick={async () => {
+                try {
+                  const result = await actions.sendTestPushNotification?.();
+                  toast.success('Push enviado', `${result?.delivered || 0} dispositivo(s) receberam a notificacao de teste.`);
+                } catch (error) {
+                  toast.error('Teste falhou', error.message);
+                }
+              }}
+              disabled={notificationState?.loading || !notificationState?.subscribed}
+              className="px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
+            >
+              Testar agora
+            </button>
           )}
         />
       </div>

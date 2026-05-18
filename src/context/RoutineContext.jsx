@@ -3,6 +3,12 @@ import { format, subDays, startOfWeek, addDays, isBefore, isSameDay, startOfToda
 import { TRANSLATIONS } from '../constants/translations';
 import { useToast } from '../components/ui/ToastProvider';
 import {
+  browserSupportsPush,
+  getExistingPushSubscription,
+  registerPushServiceWorker,
+  subscribeToPush,
+} from '../lib/pushNotifications';
+import {
   buildEmptyWeek,
   buildHistoryKey,
   getHistoryEntry,
@@ -86,7 +92,7 @@ const normalizeSnapshot = (snapshot = {}, configFallback = {}) => {
     activities: Array.isArray(snapshot.activities) ? snapshot.activities : [],
     currentWeek: normalizeWeekWithTasks(snapshot.currentWeek, nextShifts),
     history: snapshot.history && typeof snapshot.history === 'object' ? snapshot.history : {},
-    goals: Array.isArray(snapshot.goals) ? snapshot.goals : [],
+    goals: Array.isArray(snapshot.goals) ? snapshot.goals.map(normalizeGoalRecord) : [],
     config: nextConfig,
     canvasNodes: Array.isArray(snapshot.canvasNodes) ? snapshot.canvasNodes : [],
     cycleCards: Array.isArray(snapshot.cycleCards) ? snapshot.cycleCards : [],
@@ -95,6 +101,25 @@ const normalizeSnapshot = (snapshot = {}, configFallback = {}) => {
     },
   };
 };
+
+const normalizeGoalType = (type = '') => {
+  const normalized = String(type || '').trim().toLowerCase();
+
+  if (['manual', 'custom', 'freeform'].includes(normalized)) return 'manual';
+  if (['streak', 'daily_streak', 'current_streak', 'dailystreak'].includes(normalized)) return 'streak';
+  if (['total_activities', 'totalactivities', 'activity_total', 'total_completed'].includes(normalized)) return 'total_activities';
+  if (['perfect_weeks', 'weekly_streak', 'weeklystreak', 'perfectweeks'].includes(normalized)) return 'perfect_weeks';
+
+  return normalized || 'manual';
+};
+
+const normalizeGoalRecord = (goal = {}) => ({
+  ...goal,
+  title: String(goal.title || '').trim(),
+  type: normalizeGoalType(goal.type),
+  target: Math.max(1, Number(goal.target) || 1),
+  current: Math.max(0, Number(goal.current) || 0),
+});
 
 const hasMeaningfulData = (snapshot) => {
   const normalized = normalizeSnapshot(snapshot);
@@ -158,6 +183,12 @@ export const RoutineProvider = ({ children }) => {
   const [isShuffling, setIsShuffling] = useState(false);
   const [config, setConfig] = useState(initialConfig);
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false);
+  const [notificationState, setNotificationState] = useState(() => ({
+    supported: browserSupportsPush(),
+    permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
+    subscribed: false,
+    loading: false,
+  }));
   const lastChangeAtRef = useRef(db.meta?.updatedAt || null);
   const skipNextTouchRef = useRef(false);
   const hasCheckedWeekRef = useRef(false);
@@ -209,6 +240,31 @@ export const RoutineProvider = ({ children }) => {
     } catch (error) {
       return { ok: false, status: 0, error: 'Servidor indisponível no momento. Tente novamente em instantes.' };
     }
+  };
+
+  const fetchWithAuth = async (path, options = {}, authToken = token) => {
+    const headers = {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${authToken}`,
+    };
+
+    const response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+    });
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (error) {
+      data = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || 'Nao foi possivel concluir a operacao.');
+    }
+
+    return data;
   };
 
   const persistLocalSnapshot = (snapshot) => {
@@ -279,6 +335,39 @@ export const RoutineProvider = ({ children }) => {
     }
   };
 
+  const refreshNotificationState = async () => {
+    const supported = browserSupportsPush();
+    if (!supported) {
+      setNotificationState({
+        supported: false,
+        permission: 'denied',
+        subscribed: false,
+        loading: false,
+      });
+      return;
+    }
+
+    try {
+      await registerPushServiceWorker();
+      const subscription = await getExistingPushSubscription();
+      setNotificationState((prev) => ({
+        ...prev,
+        supported: true,
+        permission: Notification.permission,
+        subscribed: Boolean(subscription),
+        loading: false,
+      }));
+    } catch (error) {
+      setNotificationState((prev) => ({
+        ...prev,
+        supported: true,
+        permission: Notification.permission,
+        subscribed: false,
+        loading: false,
+      }));
+    }
+  };
+
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark', 'theme-default', 'theme-professional', 'theme-cozy');
@@ -287,8 +376,17 @@ export const RoutineProvider = ({ children }) => {
   }, [config.theme, config.themePreset]);
 
   useEffect(() => {
+    refreshNotificationState();
+  }, []);
+
+  useEffect(() => {
     setCurrentWeek((prev) => normalizeWeekWithTasks(prev, getConfiguredShifts(config)));
   }, [config.routineMode, config.activeShifts]);
+
+  useEffect(() => {
+    if (!token || !hasCompletedInitialSync || !browserSupportsPush()) return;
+    refreshNotificationState().catch(() => {});
+  }, [token, hasCompletedInitialSync]);
 
   useEffect(() => {
     if (!user || !token) return;
@@ -596,6 +694,89 @@ export const RoutineProvider = ({ children }) => {
     setIsShuffling(false);
   };
 
+  const enablePushNotifications = async () => {
+    if (!browserSupportsPush()) {
+      throw new Error('Seu navegador ou contexto atual nao suporta notificacoes push.');
+    }
+
+    setNotificationState((prev) => ({ ...prev, loading: true }));
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setNotificationState((prev) => ({ ...prev, permission, subscribed: false, loading: false }));
+        throw new Error('Permissao de notificacao nao concedida.');
+      }
+
+      const { publicKey } = await fetchWithAuth('/push/public-key');
+      const subscription = await subscribeToPush(publicKey);
+
+      await fetchWithAuth('/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription }),
+      });
+
+      setNotificationState({
+        supported: true,
+        permission,
+        subscribed: true,
+        loading: false,
+      });
+
+      return { success: true };
+    } catch (error) {
+      setNotificationState((prev) => ({ ...prev, loading: false }));
+      throw error;
+    }
+  };
+
+  const disablePushNotifications = async () => {
+    if (!browserSupportsPush()) {
+      throw new Error('Push notifications nao sao suportadas neste dispositivo.');
+    }
+
+    setNotificationState((prev) => ({ ...prev, loading: true }));
+
+    try {
+      await registerPushServiceWorker();
+      const subscription = await getExistingPushSubscription();
+
+      if (subscription?.endpoint) {
+        await fetchWithAuth('/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        });
+        await subscription.unsubscribe();
+      }
+
+      setNotificationState({
+        supported: true,
+        permission: Notification.permission,
+        subscribed: false,
+        loading: false,
+      });
+
+      return { success: true };
+    } catch (error) {
+      setNotificationState((prev) => ({ ...prev, loading: false }));
+      throw error;
+    }
+  };
+
+  const sendTestPushNotification = async () => {
+    setNotificationState((prev) => ({ ...prev, loading: true }));
+    try {
+      const result = await fetchWithAuth('/push/test', { method: 'POST' });
+      setNotificationState((prev) => ({ ...prev, loading: false }));
+      return result;
+    } catch (error) {
+      setNotificationState((prev) => ({ ...prev, loading: false }));
+      throw error;
+    }
+  };
+
   const login = async (email, password) => {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
@@ -626,6 +807,7 @@ export const RoutineProvider = ({ children }) => {
 
       setHasCompletedInitialSync(true);
       hasCheckedWeekRef.current = false;
+      refreshNotificationState().catch(() => {});
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
@@ -683,11 +865,14 @@ export const RoutineProvider = ({ children }) => {
   }, [completedDays, history]);
 
   const resolvedGoals = useMemo(() => {
-    return goals.map((goal) => {
+    return goals.map((rawGoal) => {
+      const goal = normalizeGoalRecord(rawGoal);
+
       if (goal.type === 'manual') return goal;
       if (goal.type === 'streak') return { ...goal, current: stats.daily };
       if (goal.type === 'total_activities') return { ...goal, current: stats.total };
       if (goal.type === 'perfect_weeks') return { ...goal, current: stats.weekly };
+
       return goal;
     });
   }, [goals, stats]);
@@ -706,6 +891,7 @@ export const RoutineProvider = ({ children }) => {
         goals: resolvedGoals,
         canvasNodes,
         cycleCards,
+        notificationState,
         completedDays,
         stats,
         actions: {
@@ -747,6 +933,10 @@ export const RoutineProvider = ({ children }) => {
             await commitActivitiesSnapshot(nextActivities);
           },
           triggerShuffle,
+          refreshNotificationState,
+          enablePushNotifications,
+          disablePushNotifications,
+          sendTestPushNotification,
           toggleComplete,
           updateDayData,
           addCanvasNode: (activity) =>
@@ -793,10 +983,23 @@ export const RoutineProvider = ({ children }) => {
           updateCanvasNodeData: (id, data) => setCanvasNodes((prev) => prev.map((node) => (node.id === id ? { ...node, ...data } : node))),
           deleteCanvasNode: (id) => setCanvasNodes((prev) => prev.filter((node) => node.id !== id)),
           setConfig,
-          addGoal: (goal) => setGoals((prev) => [...prev, { ...goal, id: crypto.randomUUID(), current: 0 }]),
+          addGoal: (goal) =>
+            setGoals((prev) => [
+              ...prev,
+              {
+                ...normalizeGoalRecord(goal),
+                id: crypto.randomUUID(),
+                current: normalizeGoalType(goal?.type) === 'manual' ? Math.max(0, Number(goal?.current) || 0) : 0,
+              },
+            ]),
           incrementGoal: (id) =>
             setGoals((prev) =>
-              prev.map((goal) => (goal.id === id && goal.type === 'manual' ? { ...goal, current: Math.min(goal.current + 1, goal.target) } : goal)),
+              prev.map((rawGoal) => {
+                const goal = normalizeGoalRecord(rawGoal);
+                return goal.id === id && goal.type === 'manual'
+                  ? { ...goal, current: Math.min(goal.current + 1, goal.target) }
+                  : goal;
+              }),
             ),
           deleteGoal: (id) => setGoals((prev) => prev.filter((goal) => goal.id !== id)),
           addCycleCard: (card) =>
