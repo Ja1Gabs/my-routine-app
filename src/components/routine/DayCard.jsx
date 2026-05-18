@@ -213,6 +213,21 @@ const DayCard = ({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_24%)] opacity-80 pointer-events-none" />
+      {dayImage && (
+        <>
+          <div
+            className="absolute inset-0 pointer-events-none opacity-30"
+            style={{
+              backgroundImage: `url(${dayImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(42px)',
+              transform: 'scale(1.08)',
+            }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_42%),linear-gradient(180deg,rgba(9,16,28,0.28),rgba(9,16,28,0.78))] pointer-events-none" />
+        </>
+      )}
       <div className="relative z-10 max-h-[88vh] overflow-y-auto custom-scrollbar">
         <div className="sticky top-0 z-20 bg-background/82 backdrop-blur-xl border-b border-border px-4 py-4 md:px-6">
           <div className="flex items-start justify-between gap-3">
@@ -349,8 +364,16 @@ const DayCard = ({
 
           <div className="space-y-4">
             {dayImage ? (
-              <div className="relative rounded-2xl overflow-hidden border border-border group">
-                <img src={dayImage} className="w-full h-52 object-cover" alt="Capture" />
+              <div className="relative rounded-2xl overflow-hidden border border-border group bg-background/40">
+                <div className="absolute inset-0">
+                  <img src={dayImage} className="w-full h-full object-cover scale-110 blur-2xl opacity-45" alt="" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/25 to-background/70" />
+                </div>
+                <div className="relative flex items-center justify-center p-4">
+                  <div className="w-full aspect-square max-h-[20rem] rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_45px_rgba(0,0,0,0.28)]">
+                    <img src={dayImage} className="w-full h-full object-cover" alt="Capture" />
+                  </div>
+                </div>
                 <button
                   onClick={() => actions.updateDayData(actualDateStr, actualShiftKey, actualActivityId, { image: null }, activity)}
                   className="absolute top-3 right-3 bg-black/70 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"
