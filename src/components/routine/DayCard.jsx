@@ -22,6 +22,7 @@ import confetti from 'canvas-confetti';
 import { format } from 'date-fns';
 import { THEMES } from '../../entities/theme';
 import { useRoutine } from '../../context/RoutineContext';
+import { useToast } from '../ui/ToastProvider';
 import { getHistoryEntry } from '../../lib/routine';
 
 const SHIFT_ICONS = {
@@ -32,6 +33,46 @@ const SHIFT_ICONS = {
 };
 
 const normalizeTaskText = (value = '') => value.trim().toLowerCase();
+const MAX_IMAGE_DIMENSION = 1400;
+const IMAGE_EXPORT_QUALITY = 0.82;
+
+const optimizeImageFile = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error('Nao foi possivel ler a imagem.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Nao foi possivel processar a imagem.'));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Nao foi possivel preparar a imagem.'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        try {
+          const optimized = canvas.toDataURL('image/webp', IMAGE_EXPORT_QUALITY);
+          resolve(optimized);
+        } catch (error) {
+          reject(new Error('Nao foi possivel comprimir a imagem.'));
+        }
+      };
+
+      img.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
 
 const TaskItem = ({ task, onToggle, onDelete }) => (
   <div
@@ -80,6 +121,7 @@ const DayCard = ({
   shiftLabel,
 }) => {
   const { actions, history, config, t, cycleCards } = useRoutine();
+  const toast = useToast();
   const fileInputRef = useRef(null);
   const [newTaskText, setNewTaskText] = useState('');
 
@@ -195,12 +237,16 @@ const DayCard = ({
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      actions.updateDayData(actualDateStr, actualShiftKey, actualActivityId, { image: reader.result }, activity);
-    };
-    reader.readAsDataURL(file);
+    optimizeImageFile(file)
+      .then((optimizedImage) => {
+        actions.updateDayData(actualDateStr, actualShiftKey, actualActivityId, { image: optimizedImage }, activity);
+      })
+      .catch(() => {
+        toast.error('Nao foi possivel adicionar a imagem', 'Tente novamente com outra imagem ou arquivo menor.');
+      })
+      .finally(() => {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      });
   };
 
   const modalContent = (

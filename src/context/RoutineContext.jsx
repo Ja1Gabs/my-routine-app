@@ -113,6 +113,19 @@ const hasMeaningfulData = (snapshot) => {
 const getSnapshotTimestamp = (snapshot) =>
   Date.parse(snapshot?.meta?.updatedAt || snapshot?.clientUpdatedAt || 0) || 0;
 
+const stripImagesFromHistory = (history = {}) =>
+  Object.fromEntries(
+    Object.entries(history || {}).map(([key, entry]) => [
+      key,
+      entry && typeof entry === 'object'
+        ? {
+            ...entry,
+            image: entry.image ? '__image_omitted_in_backup__' : entry.image || null,
+          }
+        : entry,
+    ]),
+  );
+
 const getLocalDB = () => {
   const primaryRaw = readJSON(DB_KEY, null) || readJSON(LEGACY_DB_KEY, null) || {};
   const primary = normalizeSnapshot(primaryRaw);
@@ -200,15 +213,37 @@ export const RoutineProvider = ({ children }) => {
 
   const persistLocalSnapshot = (snapshot) => {
     const normalized = normalizeSnapshot(snapshot, config);
-    localStorage.setItem(DB_KEY, JSON.stringify(normalized));
+    try {
+      localStorage.setItem(DB_KEY, JSON.stringify(normalized));
+    } catch (error) {
+      const fallbackSnapshot = {
+        ...normalized,
+        history: stripImagesFromHistory(normalized.history),
+      };
+
+      localStorage.setItem(DB_KEY, JSON.stringify(fallbackSnapshot));
+      toast.warning(
+        'Imagem muito pesada para armazenamento local',
+        'A rotina foi salva, mas algumas imagens podem precisar ser reenviadas se o navegador ficar sem espaco.',
+      );
+    }
 
     const backups = readJSON(BACKUP_KEY, []);
     const savedAt = normalized.meta.updatedAt || new Date().toISOString();
+    const backupSafeSnapshot = {
+      ...normalized,
+      history: stripImagesFromHistory(normalized.history),
+    };
     const nextBackups = [
-      { savedAt, data: normalized },
+      { savedAt, data: backupSafeSnapshot },
       ...backups.filter((entry) => entry?.savedAt !== savedAt),
     ].slice(0, 5);
-    localStorage.setItem(BACKUP_KEY, JSON.stringify(nextBackups));
+
+    try {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(nextBackups));
+    } catch (error) {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify(nextBackups.slice(0, 1)));
+    }
   };
 
   const applyRemoteSnapshot = (snapshot = {}, configFallback = config) => {
