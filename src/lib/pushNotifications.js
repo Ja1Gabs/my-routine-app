@@ -1,3 +1,8 @@
+export const browserCanAskNotificationPermission = () =>
+  typeof window !== 'undefined' &&
+  'Notification' in window &&
+  window.isSecureContext;
+
 export const browserSupportsPush = () =>
   typeof window !== 'undefined' &&
   'Notification' in window &&

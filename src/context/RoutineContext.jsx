@@ -3,6 +3,7 @@ import { format, subDays, startOfWeek, addDays, isBefore, isSameDay, startOfToda
 import { TRANSLATIONS } from '../constants/translations';
 import { useToast } from '../components/ui/ToastProvider';
 import {
+  browserCanAskNotificationPermission,
   browserSupportsPush,
   getExistingPushSubscription,
   registerPushServiceWorker,
@@ -152,6 +153,9 @@ const getWeekIndexFromDate = (dateStr) => {
   }
 };
 
+const getExactHistoryEntry = (history, dateStr, shiftKey = 'default', activityId = 'default') =>
+  history?.[buildHistoryKey(dateStr, shiftKey, activityId)] || null;
+
 const stripImagesFromHistory = (history = {}) =>
   Object.fromEntries(
     Object.entries(history || {}).map(([key, entry]) => [
@@ -198,6 +202,7 @@ export const RoutineProvider = ({ children }) => {
   const [config, setConfig] = useState(initialConfig);
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false);
   const [notificationState, setNotificationState] = useState(() => ({
+    canAskPermission: browserCanAskNotificationPermission(),
     supported: browserSupportsPush(),
     permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
     subscribed: false,
@@ -353,6 +358,7 @@ export const RoutineProvider = ({ children }) => {
     const supported = browserSupportsPush();
     if (!supported) {
       setNotificationState({
+        canAskPermission: browserCanAskNotificationPermission(),
         supported: false,
         permission: 'denied',
         subscribed: false,
@@ -366,6 +372,7 @@ export const RoutineProvider = ({ children }) => {
       const subscription = await getExistingPushSubscription();
       setNotificationState((prev) => ({
         ...prev,
+        canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission: Notification.permission,
         subscribed: Boolean(subscription),
@@ -374,6 +381,7 @@ export const RoutineProvider = ({ children }) => {
     } catch (error) {
       setNotificationState((prev) => ({
         ...prev,
+        canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission: Notification.permission,
         subscribed: false,
@@ -709,8 +717,8 @@ export const RoutineProvider = ({ children }) => {
   };
 
   const enablePushNotifications = async () => {
-    if (!browserSupportsPush()) {
-      throw new Error('Seu navegador ou contexto atual nao suporta notificacoes push.');
+    if (!browserCanAskNotificationPermission()) {
+      throw new Error('Este navegador nao consegue pedir permissao de notificacao neste contexto. Use HTTPS ou instale o app na tela inicial, se estiver no iPhone.');
     }
 
     setNotificationState((prev) => ({ ...prev, loading: true }));
@@ -718,8 +726,26 @@ export const RoutineProvider = ({ children }) => {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        setNotificationState((prev) => ({ ...prev, permission, subscribed: false, loading: false }));
+        setNotificationState((prev) => ({
+          ...prev,
+          canAskPermission: browserCanAskNotificationPermission(),
+          permission,
+          subscribed: false,
+          loading: false,
+        }));
         throw new Error('Permissao de notificacao nao concedida.');
+      }
+
+      if (!browserSupportsPush()) {
+        setNotificationState((prev) => ({
+          ...prev,
+          canAskPermission: browserCanAskNotificationPermission(),
+          supported: false,
+          permission,
+          subscribed: false,
+          loading: false,
+        }));
+        throw new Error('A permissao foi concedida, mas este navegador ainda nao suporta push web completo neste modo. No iPhone, normalmente voce precisa instalar o site na tela inicial.');
       }
 
       const { publicKey } = await fetchWithAuth('/push/public-key');
@@ -732,6 +758,7 @@ export const RoutineProvider = ({ children }) => {
       });
 
       setNotificationState({
+        canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission,
         subscribed: true,
@@ -746,7 +773,7 @@ export const RoutineProvider = ({ children }) => {
   };
 
   const disablePushNotifications = async () => {
-    if (!browserSupportsPush()) {
+    if (!browserCanAskNotificationPermission()) {
       throw new Error('Push notifications nao sao suportadas neste dispositivo.');
     }
 
@@ -766,6 +793,7 @@ export const RoutineProvider = ({ children }) => {
       }
 
       setNotificationState({
+        canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission: Notification.permission,
         subscribed: false,
@@ -873,7 +901,7 @@ export const RoutineProvider = ({ children }) => {
 
         if (plannedEntries.length > 0) {
           const plannedCompleted = plannedEntries.every((entry) =>
-            Boolean(getHistoryEntry(history, dateStr, entry.shiftKey, entry.activityId)?.completed),
+            Boolean(getExactHistoryEntry(history, dateStr, entry.shiftKey, entry.activityId)?.completed),
           );
 
           datesObj[dateStr] = plannedCompleted;

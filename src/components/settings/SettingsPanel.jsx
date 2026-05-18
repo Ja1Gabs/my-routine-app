@@ -49,7 +49,9 @@ const SettingsPanel = () => {
   };
 
   const notificationHint = !notificationState?.supported
-    ? 'Push depende de HTTPS, Service Worker e navegador com suporte. No iPhone, costuma exigir o site instalado na tela inicial.'
+    ? notificationState?.permission === 'granted'
+      ? 'A permissao foi concedida, mas o push completo nao esta disponivel neste modo. No iPhone, geralmente voce precisa instalar o site na tela inicial.'
+      : 'Push depende de HTTPS, Service Worker e navegador com suporte. No iPhone, costuma exigir o site instalado na tela inicial.'
     : notificationState?.permission === 'denied'
       ? 'A permissao foi bloqueada no navegador. Reative manualmente nas configuracoes do site.'
       : notificationState?.subscribed
@@ -319,7 +321,7 @@ const SettingsPanel = () => {
                     toast.error('Nao foi possivel ativar', error.message);
                   }
                 }}
-                disabled={!notificationState?.supported || notificationState?.loading || notificationState?.subscribed}
+                disabled={!notificationState?.canAskPermission || notificationState?.loading || notificationState?.subscribed}
                 className="flex-1 sm:flex-none px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
               >
                 {notificationState?.loading ? 'Processando...' : 'Ativar'}
