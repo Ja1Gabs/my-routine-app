@@ -118,6 +118,9 @@ const DayCard = ({
   const libraryTasks = Array.isArray(activity.defaultTasks) ? activity.defaultTasks.filter(Boolean) : [];
   const currentTaskLookup = new Set(dayTasks.map((task) => normalizeTaskText(task.text)));
   const suggestedTasks = libraryTasks.filter((task) => !currentTaskLookup.has(normalizeTaskText(task)));
+  const assignedTaskAlreadyTracked = activity.assignedTask
+    ? currentTaskLookup.has(normalizeTaskText(activity.assignedTask))
+    : false;
   const shouldOfferLibrarySave =
     newTaskText.trim().length > 0 &&
     !libraryTasks.some((task) => normalizeTaskText(task) === normalizeTaskText(newTaskText));
@@ -237,6 +240,27 @@ const DayCard = ({
                 <label>{t('tasksTitle')}</label>
                 <span>{dayTasks.filter((task) => task.completed).length}/{dayTasks.length}</span>
               </div>
+
+              {activity.assignedTask && (
+                <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/8 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-primary/80 mb-1">
+                        Tarefa sorteada
+                      </p>
+                      <p className="text-sm font-bold text-foreground break-words">{activity.assignedTask}</p>
+                    </div>
+                    {!assignedTaskAlreadyTracked && (
+                      <button
+                        onClick={() => addSuggestedTask(activity.assignedTask)}
+                        className="shrink-0 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider hover:opacity-90 transition-opacity"
+                      >
+                        Adicionar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 mb-4 max-h-60 overflow-y-auto no-scrollbar pr-1">
                 {dayTasks.map((task) => (
