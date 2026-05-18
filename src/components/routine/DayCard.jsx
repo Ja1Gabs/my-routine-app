@@ -89,6 +89,35 @@ const DayCard = ({
   const dayData = getHistoryEntry(history, actualDateStr, actualShiftKey, actualActivityId);
   const { tasks: dayTasks = [], image: dayImage = null, notes: dayNotes = '', completed: isCompleted = false } = dayData;
   const relatedCycles = cycleCards.filter((card) => card.activityId === actualActivityId);
+  const libraryTasks = Array.isArray(activity?.defaultTasks) ? activity.defaultTasks.filter(Boolean) : [];
+  const currentTaskLookup = new Set(dayTasks.map((task) => normalizeTaskText(task.text)));
+  const suggestedTasks = libraryTasks.filter((task) => !currentTaskLookup.has(normalizeTaskText(task)));
+  const assignedTaskAlreadyTracked = activity?.assignedTask
+    ? currentTaskLookup.has(normalizeTaskText(activity.assignedTask))
+    : false;
+
+  useEffect(() => {
+    if (!activity?.assignedTask) return;
+    if (assignedTaskAlreadyTracked) return;
+
+    actions.updateDayData(
+      actualDateStr,
+      actualShiftKey,
+      actualActivityId,
+      {
+        tasks: [...dayTasks, { id: crypto.randomUUID(), text: activity.assignedTask, completed: false }],
+      },
+      activity,
+    );
+  }, [
+    actions,
+    activity,
+    actualActivityId,
+    actualDateStr,
+    actualShiftKey,
+    assignedTaskAlreadyTracked,
+    dayTasks,
+  ]);
 
   useEffect(() => {
     if (!isExpanded) return undefined;
@@ -115,12 +144,6 @@ const DayCard = ({
   if (!activity) return null;
 
   const theme = THEMES[activity.theme] || THEMES.slate;
-  const libraryTasks = Array.isArray(activity.defaultTasks) ? activity.defaultTasks.filter(Boolean) : [];
-  const currentTaskLookup = new Set(dayTasks.map((task) => normalizeTaskText(task.text)));
-  const suggestedTasks = libraryTasks.filter((task) => !currentTaskLookup.has(normalizeTaskText(task)));
-  const assignedTaskAlreadyTracked = activity.assignedTask
-    ? currentTaskLookup.has(normalizeTaskText(activity.assignedTask))
-    : false;
   const shouldOfferLibrarySave =
     newTaskText.trim().length > 0 &&
     !libraryTasks.some((task) => normalizeTaskText(task) === normalizeTaskText(newTaskText));
@@ -166,10 +189,6 @@ const DayCard = ({
     if (!value) return;
     const nextLibraryTasks = [...libraryTasks, value];
     actions.saveActivity({ ...activity, defaultTasks: nextLibraryTasks });
-  };
-
-  const addSuggestedTask = (taskText) => {
-    appendTask(taskText);
   };
 
   const handleImageUpload = (e) => {
@@ -220,7 +239,6 @@ const DayCard = ({
                   )}
                 </div>
                 <h2 className={`text-2xl md:text-3xl font-bold tracking-tight ${theme.title}`}>{activity.name}</h2>
-                {activity.assignedTask && <p className="text-sm text-muted-foreground mt-2">{activity.assignedTask}</p>}
               </div>
             </div>
 
@@ -240,27 +258,6 @@ const DayCard = ({
                 <label>{t('tasksTitle')}</label>
                 <span>{dayTasks.filter((task) => task.completed).length}/{dayTasks.length}</span>
               </div>
-
-              {activity.assignedTask && (
-                <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/8 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-primary/80 mb-1">
-                        Tarefa sorteada
-                      </p>
-                      <p className="text-sm font-bold text-foreground break-words">{activity.assignedTask}</p>
-                    </div>
-                    {!assignedTaskAlreadyTracked && (
-                      <button
-                        onClick={() => addSuggestedTask(activity.assignedTask)}
-                        className="shrink-0 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider hover:opacity-90 transition-opacity"
-                      >
-                        Adicionar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-2 mb-4 max-h-60 overflow-y-auto no-scrollbar pr-1">
                 {dayTasks.map((task) => (
@@ -317,7 +314,7 @@ const DayCard = ({
                       {suggestedTasks.map((task, index) => (
                         <button
                           key={`${task}-${index}`}
-                          onClick={() => addSuggestedTask(task)}
+                          onClick={() => appendTask(task)}
                           className="px-3 py-2 rounded-xl bg-background border border-border text-xs font-semibold text-foreground hover:border-primary hover:text-primary transition-colors"
                         >
                           {task}
@@ -446,23 +443,15 @@ const DayCard = ({
           {activity.name}
         </h2>
 
-        {activity.assignedTask && (
-          <p className="text-xs text-muted-foreground mt-2 relative z-10 line-clamp-2">
-            {activity.assignedTask}
-          </p>
-        )}
-
-        <div className="mt-3 flex flex-wrap gap-2 relative z-10">
-          {dayTasks.slice(0, 3).map((task) => (
-            <span key={task.id} className="px-2 py-1 rounded-lg bg-background/65 border border-border text-[10px] font-semibold text-muted-foreground">
-              {task.text}
+        <div className="mt-3 relative z-10">
+          <div className="flex items-center justify-between rounded-xl bg-background/55 border border-border px-3 py-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+              {t('tasksTitle')}
             </span>
-          ))}
-          {dayTasks.length > 3 && (
-            <span className="px-2 py-1 rounded-lg bg-background/65 border border-border text-[10px] font-semibold text-muted-foreground">
-              +{dayTasks.length - 3}
+            <span className="text-xs font-semibold text-foreground">
+              {dayTasks.filter((task) => task.completed).length}/{dayTasks.length}
             </span>
-          )}
+          </div>
         </div>
 
         <div className="flex gap-2 mt-auto pt-3 relative z-10">
