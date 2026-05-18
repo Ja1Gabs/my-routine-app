@@ -14,6 +14,7 @@ import {
   getHistoryEntry,
   listHistoryEntriesForDate,
   normalizeWeekData,
+  parseHistoryKey,
 } from '../lib/routine';
 
 const RoutineContext = createContext();
@@ -137,6 +138,19 @@ const hasMeaningfulData = (snapshot) => {
 
 const getSnapshotTimestamp = (snapshot) =>
   Date.parse(snapshot?.meta?.updatedAt || snapshot?.clientUpdatedAt || 0) || 0;
+
+const getWeekIndexFromDate = (dateStr) => {
+  try {
+    const date = parseISO(dateStr);
+    const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+    const dayStart = startOfToday();
+    const currentWeekStart = startOfWeek(dayStart, { weekStartsOn: 1 });
+    if (format(weekStart, 'yyyy-MM-dd') !== format(currentWeekStart, 'yyyy-MM-dd')) return -1;
+    return Math.floor((date.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+  } catch (error) {
+    return -1;
+  }
+};
 
 const stripImagesFromHistory = (history = {}) =>
   Object.fromEntries(
@@ -831,13 +845,49 @@ export const RoutineProvider = ({ children }) => {
 
   const completedDays = useMemo(() => {
     const datesObj = {};
-    const uniqueDates = [...new Set(Object.keys(history).map((key) => key.split('_')[0]))];
-    uniqueDates.forEach((dateStr) => {
-      const dayEntries = listHistoryEntriesForDate(history, dateStr);
-      datesObj[dateStr] = dayEntries.length > 0 && dayEntries.every((entry) => entry.value?.completed);
+    const historyByDate = {};
+
+    Object.entries(history || {}).forEach(([key, value]) => {
+      const parsed = parseHistoryKey(key);
+      if (!parsed.dateStr) return;
+      historyByDate[parsed.dateStr] = historyByDate[parsed.dateStr] || [];
+      historyByDate[parsed.dateStr].push({ ...parsed, value });
     });
+
+    const knownDates = new Set([
+      ...Object.keys(historyByDate),
+      ...currentWeek.map((_, index) => format(addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), index), 'yyyy-MM-dd')),
+    ]);
+
+    knownDates.forEach((dateStr) => {
+      const weekIndex = getWeekIndexFromDate(dateStr);
+      const plannedDay = weekIndex >= 0 && weekIndex < currentWeek.length ? currentWeek[weekIndex] || {} : null;
+
+      if (plannedDay) {
+        const plannedEntries = Object.entries(plannedDay).flatMap(([shiftKey, slot]) =>
+          (Array.isArray(slot) ? slot : []).map((activity) => ({
+            shiftKey,
+            activityId: activity.id,
+          })),
+        );
+
+        if (plannedEntries.length > 0) {
+          const plannedCompleted = plannedEntries.every((entry) =>
+            Boolean(getHistoryEntry(history, dateStr, entry.shiftKey, entry.activityId)?.completed),
+          );
+
+          datesObj[dateStr] = plannedCompleted;
+          return;
+        }
+      }
+
+      const dayEntries = historyByDate[dateStr] || [];
+      const plannedCompleted = dayEntries.length > 0 && dayEntries.every((entry) => entry.value?.completed);
+        datesObj[dateStr] = plannedCompleted;
+    });
+
     return datesObj;
-  }, [history]);
+  }, [history, currentWeek]);
 
   const stats = useMemo(() => {
     let daily = 0;

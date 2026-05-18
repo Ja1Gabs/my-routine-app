@@ -4,17 +4,19 @@ import { useRoutine } from '../../context/RoutineContext';
 import { useToast } from '../ui/ToastProvider';
 
 const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
-  <div className="flex items-center justify-between gap-4 p-4 bg-card border border-border rounded-xl shadow-sm">
-    <div className="flex items-center gap-4">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-card border border-border rounded-xl shadow-sm">
+    <div className="flex items-center gap-4 min-w-0">
       <div className={`p-2 rounded-lg ${danger ? 'bg-red-500/10 text-red-400' : 'bg-primary/10 text-primary'}`}>
         <Icon size={20} />
       </div>
-      <div>
+      <div className="min-w-0">
         <h3 className={`font-bold text-sm ${danger ? 'text-red-400' : 'text-foreground'}`}>{title}</h3>
         {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
       </div>
     </div>
-    {action}
+    <div className="sm:max-w-[55%] w-full flex justify-stretch sm:justify-end">
+      {action}
+    </div>
   </div>
 );
 
@@ -45,6 +47,14 @@ const SettingsPanel = () => {
     reader.readAsDataURL(file);
     event.target.value = '';
   };
+
+  const notificationHint = !notificationState?.supported
+    ? 'Push depende de HTTPS, Service Worker e navegador com suporte. No iPhone, costuma exigir o site instalado na tela inicial.'
+    : notificationState?.permission === 'denied'
+      ? 'A permissao foi bloqueada no navegador. Reative manualmente nas configuracoes do site.'
+      : notificationState?.subscribed
+        ? 'Este dispositivo ja esta inscrito para receber notificacoes.'
+        : 'Ative para receber alertas mesmo com o site fechado.';
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-6 md:pb-8">
@@ -297,15 +307,9 @@ const SettingsPanel = () => {
         <SettingsItem
           icon={Bell}
           title="Push no celular"
-          desc={
-            !notificationState?.supported
-              ? 'Disponivel apenas em HTTPS e navegadores com suporte a Push API.'
-              : notificationState?.subscribed
-                ? 'Este dispositivo ja esta inscrito para receber notificacoes.'
-                : 'Ative para receber alertas mesmo com o site fechado.'
-          }
+          desc={notificationHint}
           action={(
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
               <button
                 onClick={async () => {
                   try {
@@ -316,7 +320,7 @@ const SettingsPanel = () => {
                   }
                 }}
                 disabled={!notificationState?.supported || notificationState?.loading || notificationState?.subscribed}
-                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
+                className="flex-1 sm:flex-none px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
               >
                 {notificationState?.loading ? 'Processando...' : 'Ativar'}
               </button>
@@ -331,7 +335,7 @@ const SettingsPanel = () => {
                   }
                 }}
                 disabled={!notificationState?.supported || notificationState?.loading || !notificationState?.subscribed}
-                className="px-4 py-2 bg-secondary hover:bg-border disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-xs font-bold rounded-lg border border-border transition-colors active:scale-95"
+                className="flex-1 sm:flex-none px-4 py-2 bg-secondary hover:bg-border disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-xs font-bold rounded-lg border border-border transition-colors active:scale-95"
               >
                 <span className="inline-flex items-center gap-1.5"><BellOff size={12} /> Desativar</span>
               </button>
@@ -358,7 +362,7 @@ const SettingsPanel = () => {
                 }
               }}
               disabled={notificationState?.loading || !notificationState?.subscribed}
-              className="px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
+              className="w-full sm:w-auto px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
             >
               Testar agora
             </button>

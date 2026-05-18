@@ -32,7 +32,6 @@ export default function Home() {
     { id: 'config', label: 'config', icon: Settings },
   ];
 
-  const mobileQuickTabs = tabs.filter((tab) => ['week', 'library', 'board', 'stats', 'config'].includes(tab.id));
   const isClassicLayout = (config.layoutMode || 'immersive') === 'classic';
 
   const overviewCards = useMemo(() => {
@@ -248,12 +247,12 @@ export default function Home() {
       </div>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/88 backdrop-blur-2xl border-t border-border z-50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.14)]">
-        <div className="grid grid-cols-5 gap-1 px-2 py-2">
-          {(isClassicLayout ? tabs.slice(0, 5) : mobileQuickTabs).map((tab) => (
+        <div className="flex gap-1 px-2 py-2 overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all min-h-[56px] ${
+              className={`shrink-0 min-w-[76px] flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl transition-all min-h-[56px] ${
                 activeTab === tab.id ? 'text-primary bg-primary/12 shadow-sm' : 'text-muted-foreground hover:bg-secondary/50'
               }`}
             >
