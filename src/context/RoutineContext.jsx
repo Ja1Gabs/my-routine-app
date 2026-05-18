@@ -106,6 +106,29 @@ const normalizeSnapshot = (snapshot = {}, configFallback = {}) => {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const buildRequestErrorMessage = (path, status, rawBody = '') => {
+  if (path.startsWith('/push') && status === 404) {
+    return `O backend publicado ainda nao tem a rota ${path}. Faca redeploy do backend no Render antes de ativar notificacoes.`;
+  }
+
+  if (path.startsWith('/push') && status === 503) {
+    return 'O servidor de notificacoes respondeu, mas ainda nao esta configurado. Configure VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY no Render.';
+  }
+
+  if (status === 401 || status === 403) {
+    return 'Sua sessao expirou. Entre novamente e tente ativar as notificacoes.';
+  }
+
+  if (status >= 500) {
+    return `O servidor falhou ao processar ${path}. Tente novamente depois que o Render terminar de acordar.`;
+  }
+
+  const compactBody = String(rawBody || '').replace(/\s+/g, ' ').trim();
+  return compactBody
+    ? `Falha em ${path} (HTTP ${status}): ${compactBody.slice(0, 120)}`
+    : `Falha em ${path} (HTTP ${status}).`;
+};
+
 const normalizeGoalType = (type = '') => {
   const normalized = String(type || '').trim().toLowerCase();
 
@@ -328,15 +351,16 @@ export const RoutineProvider = ({ children }) => {
           headers,
         });
 
+        const rawBody = await response.text();
         let data = null;
         try {
-          data = await response.json();
+          data = rawBody ? JSON.parse(rawBody) : null;
         } catch (error) {
           data = null;
         }
 
         if (!response.ok) {
-          throw new Error(data?.error || 'Nao foi possivel concluir a operacao.');
+          throw new Error(data?.error || buildRequestErrorMessage(path, response.status, rawBody));
         }
 
         return data;
