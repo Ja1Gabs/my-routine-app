@@ -6,6 +6,7 @@ import {
   browserCanAskNotificationPermission,
   browserSupportsPush,
   getExistingPushSubscription,
+  getPushSupportSnapshot,
   registerPushServiceWorker,
   subscribeToPush,
 } from '../lib/pushNotifications';
@@ -102,6 +103,8 @@ const normalizeSnapshot = (snapshot = {}, configFallback = {}) => {
     },
   };
 };
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const normalizeGoalType = (type = '') => {
   const normalized = String(type || '').trim().toLowerCase();
@@ -247,8 +250,13 @@ export const RoutineProvider = ({ children }) => {
     canAskPermission: browserCanAskNotificationPermission(),
     supported: browserSupportsPush(),
     permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
+    browserSubscribed: false,
+    serverSubscribed: false,
     subscribed: false,
     loading: false,
+    step: '',
+    error: '',
+    diagnostics: getPushSupportSnapshot(),
   }));
   const lastChangeAtRef = useRef(db.meta?.updatedAt || null);
   const skipNextTouchRef = useRef(false);
@@ -303,29 +311,44 @@ export const RoutineProvider = ({ children }) => {
     }
   };
 
-  const fetchWithAuth = async (path, options = {}, authToken = token) => {
-    const headers = {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${authToken}`,
-    };
+  const fetchWithAuth = async (path, options = {}, authToken = token, retryOptions = {}) => {
+    const retries = Math.max(0, Number(retryOptions.retries) || 0);
+    const retryDelay = Math.max(250, Number(retryOptions.retryDelay) || 1000);
+    let lastError = null;
 
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers,
-    });
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        const headers = {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${authToken}`,
+        };
 
-    let data = null;
-    try {
-      data = await response.json();
-    } catch (error) {
-      data = null;
+        const response = await fetch(`${API_URL}${path}`, {
+          ...options,
+          headers,
+        });
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (error) {
+          data = null;
+        }
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Nao foi possivel concluir a operacao.');
+        }
+
+        return data;
+      } catch (error) {
+        lastError = error;
+        if (attempt < retries) {
+          await wait(retryDelay * (attempt + 1));
+        }
+      }
     }
 
-    if (!response.ok) {
-      throw new Error(data?.error || 'Nao foi possivel concluir a operacao.');
-    }
-
-    return data;
+    throw lastError || new Error('Nao foi possivel concluir a operacao.');
   };
 
   const persistLocalSnapshot = (snapshot) => {
@@ -399,14 +422,20 @@ export const RoutineProvider = ({ children }) => {
   const refreshNotificationState = async () => {
     const supported = browserSupportsPush();
     const permission = browserCanAskNotificationPermission() ? Notification.permission : 'default';
+    const diagnostics = getPushSupportSnapshot();
 
     if (!supported) {
       setNotificationState({
         canAskPermission: browserCanAskNotificationPermission(),
         supported: false,
         permission,
+        browserSubscribed: false,
+        serverSubscribed: false,
         subscribed: false,
         loading: false,
+        step: '',
+        error: '',
+        diagnostics,
       });
       return;
     }
@@ -414,13 +443,34 @@ export const RoutineProvider = ({ children }) => {
     try {
       await registerPushServiceWorker();
       const subscription = await getExistingPushSubscription();
+      let serverSubscribed = false;
+      let serverStatus = null;
+
+      if (subscription?.endpoint && token) {
+        try {
+          serverStatus = await fetchWithAuth('/push/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          });
+          serverSubscribed = Boolean(serverStatus?.matched);
+        } catch (error) {
+          serverSubscribed = false;
+        }
+      }
+
       setNotificationState((prev) => ({
         ...prev,
         canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission: browserCanAskNotificationPermission() ? Notification.permission : 'default',
-        subscribed: Boolean(subscription),
+        browserSubscribed: Boolean(subscription),
+        serverSubscribed,
+        subscribed: Boolean(subscription) && serverSubscribed,
         loading: false,
+        step: '',
+        error: serverStatus?.ready === false ? 'Servidor de push ainda nao esta pronto.' : '',
+        diagnostics,
       }));
     } catch (error) {
       setNotificationState((prev) => ({
@@ -428,8 +478,13 @@ export const RoutineProvider = ({ children }) => {
         canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission: browserCanAskNotificationPermission() ? Notification.permission : 'default',
+        browserSubscribed: false,
+        serverSubscribed: false,
         subscribed: false,
         loading: false,
+        step: '',
+        error: error.message || 'Nao foi possivel verificar notificacoes.',
+        diagnostics,
       }));
     }
   };
@@ -765,7 +820,15 @@ export const RoutineProvider = ({ children }) => {
       throw new Error('Este navegador nao consegue pedir permissao de notificacao neste contexto. Use HTTPS ou instale o app na tela inicial, se estiver no iPhone.');
     }
 
-    setNotificationState((prev) => ({ ...prev, loading: true }));
+    let browserSubscription = null;
+
+    setNotificationState((prev) => ({
+      ...prev,
+      loading: true,
+      step: 'Pedindo permissao do navegador...',
+      error: '',
+      diagnostics: getPushSupportSnapshot(),
+    }));
 
     try {
       const permission = await Notification.requestPermission();
@@ -774,44 +837,92 @@ export const RoutineProvider = ({ children }) => {
           ...prev,
           canAskPermission: browserCanAskNotificationPermission(),
           permission,
+          browserSubscribed: false,
+          serverSubscribed: false,
           subscribed: false,
           loading: false,
+          step: '',
+          error: 'Permissao de notificacao nao concedida.',
+          diagnostics: getPushSupportSnapshot(),
         }));
         throw new Error('Permissao de notificacao nao concedida.');
       }
 
       if (!browserSupportsPush()) {
+        const support = getPushSupportSnapshot();
+        const reason = !support.isSecureContext
+          ? 'Push web exige HTTPS. Abra o site pelo endereco seguro publicado.'
+          : !support.hasServiceWorker
+            ? 'Este navegador nao disponibilizou Service Worker para o site.'
+            : !support.hasPushManager
+              ? 'Este navegador nao tem Push API. No iPhone, instale o site na tela inicial e abra pelo icone.'
+              : 'Este navegador ainda nao suporta push web completo neste modo.';
+
         setNotificationState((prev) => ({
           ...prev,
           canAskPermission: browserCanAskNotificationPermission(),
           supported: false,
           permission,
+          browserSubscribed: false,
+          serverSubscribed: false,
           subscribed: false,
           loading: false,
+          step: '',
+          error: reason,
+          diagnostics: support,
         }));
-        throw new Error('A permissao foi concedida, mas este navegador ainda nao suporta push web completo neste modo. No iPhone, normalmente voce precisa instalar o site na tela inicial.');
+        throw new Error(reason);
       }
 
-      const { publicKey } = await fetchWithAuth('/push/public-key');
-      const subscription = await subscribeToPush(publicKey);
+      setNotificationState((prev) => ({
+        ...prev,
+        step: 'Buscando chave de notificacao no servidor...',
+        diagnostics: getPushSupportSnapshot(),
+      }));
+      const { publicKey } = await fetchWithAuth('/push/public-key', {}, token, { retries: 2, retryDelay: 1200 });
 
+      setNotificationState((prev) => ({
+        ...prev,
+        step: 'Criando assinatura no navegador...',
+      }));
+      browserSubscription = await subscribeToPush(publicKey);
+
+      setNotificationState((prev) => ({
+        ...prev,
+        browserSubscribed: true,
+        step: 'Salvando assinatura no servidor...',
+      }));
       await fetchWithAuth('/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription }),
-      });
+        body: JSON.stringify({ subscription: browserSubscription }),
+      }, token, { retries: 2, retryDelay: 1200 });
 
       setNotificationState({
         canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission,
+        browserSubscribed: true,
+        serverSubscribed: true,
         subscribed: true,
         loading: false,
+        step: '',
+        error: '',
+        diagnostics: getPushSupportSnapshot(),
       });
 
       return { success: true };
     } catch (error) {
-      setNotificationState((prev) => ({ ...prev, loading: false }));
+      setNotificationState((prev) => ({
+        ...prev,
+        browserSubscribed: Boolean(browserSubscription) || prev.browserSubscribed,
+        serverSubscribed: false,
+        subscribed: false,
+        loading: false,
+        step: '',
+        error: error.message || 'Nao foi possivel ativar as notificacoes.',
+        diagnostics: getPushSupportSnapshot(),
+      }));
       throw error;
     }
   };
@@ -840,13 +951,18 @@ export const RoutineProvider = ({ children }) => {
         canAskPermission: browserCanAskNotificationPermission(),
         supported: true,
         permission: Notification.permission,
+        browserSubscribed: false,
+        serverSubscribed: false,
         subscribed: false,
         loading: false,
+        step: '',
+        error: '',
+        diagnostics: getPushSupportSnapshot(),
       });
 
       return { success: true };
     } catch (error) {
-      setNotificationState((prev) => ({ ...prev, loading: false }));
+      setNotificationState((prev) => ({ ...prev, loading: false, step: '', error: error.message || prev.error }));
       throw error;
     }
   };

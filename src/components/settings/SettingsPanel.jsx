@@ -57,6 +57,11 @@ const SettingsPanel = () => {
       : notificationState?.subscribed
         ? 'Ativo neste dispositivo: lembretes aleatorios de manha, tarde e noite.'
         : 'Ative para receber 3 lembretes por dia, em horarios aleatorios e longe da meia-noite.';
+  const notificationActionLabel = notificationState?.loading
+    ? notificationState?.step || 'Processando...'
+    : notificationState?.browserSubscribed && !notificationState?.serverSubscribed
+      ? 'Reparar ativacao'
+      : 'Ativar 3 lembretes';
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto animate-in fade-in pb-6 md:pb-8">
@@ -311,36 +316,48 @@ const SettingsPanel = () => {
           title="Push no celular"
           desc={notificationHint}
           action={(
-            <div className="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
-              <button
-                onClick={async () => {
-                  try {
-                    await actions.enablePushNotifications?.();
-                    toast.success('Notificacoes ativadas', 'Este dispositivo agora pode receber push notifications do My Routine.');
-                  } catch (error) {
-                    toast.error('Nao foi possivel ativar', error.message);
-                  }
-                }}
-                disabled={!notificationState?.canAskPermission || notificationState?.loading || notificationState?.subscribed}
-                className="flex-1 sm:flex-none px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
-              >
-                {notificationState?.loading ? 'Processando...' : 'Ativar 3 lembretes'}
-              </button>
+            <div className="w-full space-y-2">
+              <div className="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
+                <button
+                  onClick={async () => {
+                    try {
+                      await actions.enablePushNotifications?.();
+                      toast.success('Notificacoes ativadas', 'Este dispositivo agora pode receber push notifications do My Routine.');
+                    } catch (error) {
+                      toast.error('Nao foi possivel ativar', error.message);
+                    }
+                  }}
+                  disabled={!notificationState?.canAskPermission || notificationState?.loading || notificationState?.subscribed}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
+                >
+                  {notificationActionLabel}
+                </button>
 
-              <button
-                onClick={async () => {
-                  try {
-                    await actions.disablePushNotifications?.();
-                    toast.info('Notificacoes desativadas', 'O dispositivo foi removido da lista de push notifications.');
-                  } catch (error) {
-                    toast.error('Nao foi possivel desativar', error.message);
-                  }
-                }}
-                disabled={!notificationState?.supported || notificationState?.loading || !notificationState?.subscribed}
-                className="flex-1 sm:flex-none px-4 py-2 bg-secondary hover:bg-border disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-xs font-bold rounded-lg border border-border transition-colors active:scale-95"
-              >
-                <span className="inline-flex items-center gap-1.5"><BellOff size={12} /> Desativar</span>
-              </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await actions.disablePushNotifications?.();
+                      toast.info('Notificacoes desativadas', 'O dispositivo foi removido da lista de push notifications.');
+                    } catch (error) {
+                      toast.error('Nao foi possivel desativar', error.message);
+                    }
+                  }}
+                  disabled={!notificationState?.supported || notificationState?.loading || !notificationState?.browserSubscribed}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-secondary hover:bg-border disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-xs font-bold rounded-lg border border-border transition-colors active:scale-95"
+                >
+                  <span className="inline-flex items-center gap-1.5"><BellOff size={12} /> Desativar</span>
+                </button>
+              </div>
+
+              {(notificationState?.step || notificationState?.error || (notificationState?.browserSubscribed && !notificationState?.serverSubscribed)) && (
+                <div className="rounded-lg border border-border bg-secondary/45 px-3 py-2 text-[10px] font-bold leading-relaxed text-muted-foreground">
+                  {notificationState?.step && <p>{notificationState.step}</p>}
+                  {notificationState?.browserSubscribed && !notificationState?.serverSubscribed && (
+                    <p>Navegador assinado, mas servidor ainda nao confirmou. Use Reparar ativacao.</p>
+                  )}
+                  {notificationState?.error && <p className="text-destructive">{notificationState.error}</p>}
+                </div>
+              )}
             </div>
           )}
         />

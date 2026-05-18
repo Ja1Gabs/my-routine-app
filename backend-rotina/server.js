@@ -449,6 +449,27 @@ app.post('/push/unsubscribe', authenticate, async (req, res) => {
   }
 });
 
+app.post('/push/status', authenticate, async (req, res) => {
+  try {
+    const endpoint = req.body?.endpoint || '';
+    const existingRecord = await getUserDataRecord(req.userId);
+    const existingContent = existingRecord?.content && typeof existingRecord.content === 'object' ? existingRecord.content : {};
+    const subscriptions = getPushSubscriptionsFromContent(existingContent);
+    const schedule = getPushScheduleFromContent(existingContent);
+
+    res.json({
+      ready: pushConfigIsReady(),
+      matched: endpoint ? subscriptions.some((subscription) => subscription.endpoint === endpoint) : false,
+      total: subscriptions.length,
+      schedule,
+      usingTemporaryVapid: !process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY,
+    });
+  } catch (error) {
+    console.error('Erro ao verificar status de push:', error);
+    res.status(500).json({ error: 'Erro ao verificar notificacoes.' });
+  }
+});
+
 app.post('/push/test', authenticate, async (req, res) => {
   if (!pushConfigIsReady()) {
     return res.status(503).json({ error: 'Push notifications ainda nao estao configuradas no servidor.' });

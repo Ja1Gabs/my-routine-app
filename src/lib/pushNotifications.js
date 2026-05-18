@@ -9,6 +9,14 @@ export const browserSupportsPush = () =>
   'PushManager' in window &&
   window.isSecureContext;
 
+export const getPushSupportSnapshot = () => ({
+  hasNotificationApi: typeof window !== 'undefined' && 'Notification' in window,
+  hasServiceWorker: typeof window !== 'undefined' && 'serviceWorker' in navigator,
+  hasPushManager: typeof window !== 'undefined' && 'PushManager' in window,
+  isSecureContext: typeof window !== 'undefined' && Boolean(window.isSecureContext),
+  permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default',
+});
+
 const urlBase64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');

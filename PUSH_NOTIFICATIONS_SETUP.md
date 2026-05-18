@@ -60,3 +60,5 @@ Se o servidor estiver dormindo e acordar depois da janela, o lembrete perdido e 
 - No celular, o suporte depende do navegador
 - Em iPhone, o comportamento funciona melhor quando o site esta instalado na tela inicial como web app
 - O backend preserva as subscriptions do usuario sem depender de migracao nova no banco
+- Se a permissao aparece mas a ativacao falha, redeploye tambem o backend no Render. A ativacao depende das rotas `/push/public-key`, `/push/subscribe` e `/push/status`.
+- Se aparecer `Push notifications ainda nao estao configuradas no servidor`, gere chaves com `npm run vapid` dentro de `backend-rotina` e configure `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` no Render.
