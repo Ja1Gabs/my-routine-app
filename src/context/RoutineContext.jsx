@@ -140,6 +140,21 @@ export const RoutineProvider = ({ children }) => {
     },
   });
 
+  const postSnapshotToServer = async (snapshot, authToken = token) => {
+    if (!authToken) return false;
+
+    try {
+      const res = await fetch(`${API_URL}/data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify(snapshot),
+      });
+      return res.ok;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const persistLocalSnapshot = (snapshot) => {
     const normalized = normalizeSnapshot(snapshot, config);
     localStorage.setItem(DB_KEY, JSON.stringify(normalized));
@@ -167,6 +182,23 @@ export const RoutineProvider = ({ children }) => {
     setConfig(normalized.config);
 
     persistLocalSnapshot(normalized);
+  };
+
+  const commitActivitiesSnapshot = async (nextActivities) => {
+    const updatedAt = new Date().toISOString();
+    lastChangeAtRef.current = updatedAt;
+
+    const nextSnapshot = buildSnapshot({
+      activities: nextActivities,
+      updatedAt,
+    });
+
+    persistLocalSnapshot(nextSnapshot);
+    setActivitiesPool(nextActivities);
+
+    if (token && hasCompletedInitialSync) {
+      await postSnapshotToServer(nextSnapshot);
+    }
   };
 
   useEffect(() => {
@@ -203,11 +235,7 @@ export const RoutineProvider = ({ children }) => {
 
         if (!serverHasData && localHasData) {
           applyRemoteSnapshot(localData, config);
-          fetch(`${API_URL}/data`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify(localData),
-          }).catch(() => {});
+          postSnapshotToServer(localData).catch(() => {});
           return;
         }
 
@@ -219,11 +247,7 @@ export const RoutineProvider = ({ children }) => {
           applyRemoteSnapshot(selectedData, config);
 
           if (selectedData === localData) {
-            fetch(`${API_URL}/data`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify(localData),
-            }).catch(() => {});
+            postSnapshotToServer(localData).catch(() => {});
           }
           return;
         }
@@ -317,11 +341,7 @@ export const RoutineProvider = ({ children }) => {
 
     if (token && hasCompletedInitialSync) {
       const timer = setTimeout(() => {
-        fetch(`${API_URL}/data`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(nextDb),
-        }).catch(() => {});
+        postSnapshotToServer(nextDb).catch(() => {});
       }, 800);
       return () => clearTimeout(timer);
     }
@@ -612,16 +632,41 @@ export const RoutineProvider = ({ children }) => {
         actions: {
           login,
           register,
+          syncNow: async () => {
+            const snapshot = buildSnapshot({ updatedAt: new Date().toISOString() });
+            lastChangeAtRef.current = snapshot.meta.updatedAt;
+            persistLocalSnapshot(snapshot);
+            return postSnapshotToServer(snapshot);
+          },
           logout: () => {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             window.location.reload();
           },
-          saveActivity: (activity) =>
-            activity.id
-              ? setActivitiesPool((prev) => prev.map((item) => (item.id === activity.id ? activity : item)))
-              : setActivitiesPool((prev) => [...prev, { ...activity, id: crypto.randomUUID() }]),
-          deleteActivity: (id) => setActivitiesPool((prev) => prev.filter((activity) => activity.id !== id)),
+          saveActivity: async (activity) => {
+            const nextActivity = activity.id ? activity : { ...activity, id: crypto.randomUUID() };
+            const nextActivities = nextActivity.id && activitiesPool.some((item) => item.id === nextActivity.id)
+              ? activitiesPool.map((item) => (item.id === nextActivity.id ? nextActivity : item))
+              : [...activitiesPool, nextActivity];
+
+            await commitActivitiesSnapshot(nextActivities);
+          },
+          importActivities: async (activities) => {
+            const normalizedActivities = Array.isArray(activities) ? activities : [];
+            if (normalizedActivities.length === 0) return;
+
+            const nextMap = new Map(activitiesPool.map((activity) => [activity.id, activity]));
+            normalizedActivities.forEach((activity) => {
+              const nextActivity = activity.id ? activity : { ...activity, id: crypto.randomUUID() };
+              nextMap.set(nextActivity.id, nextActivity);
+            });
+
+            await commitActivitiesSnapshot(Array.from(nextMap.values()));
+          },
+          deleteActivity: async (id) => {
+            const nextActivities = activitiesPool.filter((activity) => activity.id !== id);
+            await commitActivitiesSnapshot(nextActivities);
+          },
           triggerShuffle,
           toggleComplete,
           updateDayData,

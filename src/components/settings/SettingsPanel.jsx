@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Moon, Sun, LogOut, ShieldAlert, Calendar, Globe, Image as ImageIcon, LayoutTemplate, Layers3 } from 'lucide-react';
+import { Moon, Sun, LogOut, ShieldAlert, Calendar, Globe, Image as ImageIcon, LayoutTemplate, Layers3, RefreshCw } from 'lucide-react';
 import { useRoutine } from '../../context/RoutineContext';
 
 const SettingsItem = ({ icon: Icon, title, desc, action, danger = false }) => (
@@ -291,6 +291,23 @@ const SettingsPanel = () => {
 
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-red-400/60 uppercase ml-1 tracking-widest">{t('account')}</h3>
+
+        <SettingsItem
+          icon={RefreshCw}
+          title={t('syncNow') || 'Sincronizar agora'}
+          desc={t('syncNowDesc') || 'Forca o envio dos dados atuais para a sua conta'}
+          action={(
+            <button
+              onClick={async () => {
+                const ok = await actions.syncNow?.();
+                window.alert(ok ? (t('syncSuccess') || 'Sincronizado com sucesso') : (t('syncError') || 'Nao foi possivel sincronizar agora'));
+              }}
+              className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg transition-colors active:scale-95"
+            >
+              {t('syncNow') || 'Sincronizar agora'}
+            </button>
+          )}
+        />
 
         <SettingsItem
           icon={ShieldAlert}

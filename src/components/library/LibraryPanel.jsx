@@ -317,22 +317,27 @@ const LibraryPanel = () => {
         return;
       }
 
-      importedActivities.forEach((activity) => {
-        const nextActivity = {
-          ...activity,
-          id: activity.id || crypto.randomUUID(),
-          rules: {
-            frequency: 1,
-            appearanceChance: 1,
-            allowedDays: [0, 1, 2, 3, 4, 5, 6],
-            allowedShifts: ['morning', 'afternoon', 'night'],
-            pinnedDays: [],
-            ...activity.rules,
-          },
-          defaultTasks: Array.isArray(activity.defaultTasks) ? activity.defaultTasks : [],
-        };
-        actions.saveActivity(nextActivity);
-      });
+      const normalizedActivities = importedActivities.map((activity) => ({
+        ...activity,
+        id: activity.id || crypto.randomUUID(),
+        rules: {
+          frequency: 1,
+          appearanceChance: 1,
+          allowedDays: [0, 1, 2, 3, 4, 5, 6],
+          allowedShifts: ['morning', 'afternoon', 'night'],
+          pinnedDays: [],
+          ...activity.rules,
+        },
+        defaultTasks: Array.isArray(activity.defaultTasks) ? activity.defaultTasks : [],
+      }));
+
+      if (actions.importActivities) {
+        await actions.importActivities(normalizedActivities);
+      } else {
+        normalizedActivities.forEach((activity) => {
+          actions.saveActivity(activity);
+        });
+      }
 
       alert(`${importedActivities.length} carta(s) importada(s) para a biblioteca.`);
     } catch (error) {
