@@ -269,6 +269,7 @@ export const RoutineProvider = ({ children }) => {
   const [isShuffling, setIsShuffling] = useState(false);
   const [config, setConfig] = useState(initialConfig);
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false);
+  const [clockTick, setClockTick] = useState(() => Date.now());
   const [notificationState, setNotificationState] = useState(() => ({
     canAskPermission: browserCanAskNotificationPermission(),
     supported: browserSupportsPush(),
@@ -283,9 +284,12 @@ export const RoutineProvider = ({ children }) => {
   }));
   const lastChangeAtRef = useRef(db.meta?.updatedAt || null);
   const skipNextTouchRef = useRef(false);
-  const hasCheckedWeekRef = useRef(false);
 
   const t = (key) => TRANSLATIONS[config.lang || 'pt'][key] || key;
+  const currentWeekStart = useMemo(
+    () => format(startOfWeek(new Date(clockTick), { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+    [clockTick],
+  );
 
   const buildSnapshot = (overrides = {}) => ({
     activities: overrides.activities ?? activitiesPool,
@@ -521,6 +525,19 @@ export const RoutineProvider = ({ children }) => {
   }, [config.theme, config.themePreset]);
 
   useEffect(() => {
+    const refreshClock = () => setClockTick(Date.now());
+    const timer = setInterval(refreshClock, 60000);
+    window.addEventListener('focus', refreshClock);
+    document.addEventListener('visibilitychange', refreshClock);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshClock);
+      document.removeEventListener('visibilitychange', refreshClock);
+    };
+  }, []);
+
+  useEffect(() => {
     refreshNotificationState();
   }, []);
 
@@ -533,70 +550,98 @@ export const RoutineProvider = ({ children }) => {
     refreshNotificationState().catch(() => {});
   }, [token, hasCompletedInitialSync]);
 
-  useEffect(() => {
+  const syncWithServer = async () => {
     if (!user || !token) return;
 
-    const syncWithServer = async () => {
-      const wakeTimer = setTimeout(() => setIsServerWaking(true), 2500);
+    const wakeTimer = setTimeout(() => setIsServerWaking(true), 2500);
 
-      try {
-        const res = await fetch(`${API_URL}/data`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    try {
+      const res = await fetch(`${API_URL}/data`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        clearTimeout(wakeTimer);
-        setIsServerWaking(false);
+      clearTimeout(wakeTimer);
+      setIsServerWaking(false);
 
-        if (!res.ok) return;
+      if (!res.ok) return;
 
-        const serverData = normalizeSnapshot(await res.json(), config);
-        const localData = getLocalDB();
-        const serverHasData = hasMeaningfulData(serverData);
-        const localHasData = hasMeaningfulData(localData);
+      const serverData = normalizeSnapshot(await res.json(), config);
+      const localData = getLocalDB();
+      const serverHasData = hasMeaningfulData(serverData);
+      const localHasData = hasMeaningfulData(localData);
 
-        if (!serverHasData && localHasData) {
-          applyRemoteSnapshot(localData, config);
-          postSnapshotToServer(localData).catch(() => {});
-          return;
-        }
-
-        if (serverHasData && localHasData) {
-          const selectedData = getSnapshotTimestamp(serverData) >= getSnapshotTimestamp(localData)
-            ? serverData
-            : localData;
-
-          applyRemoteSnapshot(selectedData, config);
-
-          if (selectedData === localData) {
-            postSnapshotToServer(localData).catch(() => {});
-          }
-          return;
-        }
-
-        if (serverHasData) {
-          applyRemoteSnapshot(serverData, config);
-          return;
-        }
-
-        if (localHasData) {
-          applyRemoteSnapshot(localData, config);
-        }
-      } catch (error) {
-        clearTimeout(wakeTimer);
-        setIsServerWaking(false);
-      } finally {
-        setHasCompletedInitialSync(true);
+      if (!serverHasData && localHasData) {
+        applyRemoteSnapshot(localData, config);
+        postSnapshotToServer(localData).catch(() => {});
+        return;
       }
-    };
+
+      if (serverHasData && localHasData) {
+        const selectedData = getSnapshotTimestamp(serverData) >= getSnapshotTimestamp(localData)
+          ? serverData
+          : localData;
+
+        applyRemoteSnapshot(selectedData, config);
+
+        if (selectedData === localData) {
+          postSnapshotToServer(localData).catch(() => {});
+        }
+        return;
+      }
+
+      if (serverHasData) {
+        applyRemoteSnapshot(serverData, config);
+        return;
+      }
+
+      if (localHasData) {
+        applyRemoteSnapshot(localData, config);
+      }
+    } catch (error) {
+      clearTimeout(wakeTimer);
+      setIsServerWaking(false);
+    } finally {
+      setHasCompletedInitialSync(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!user || !token) return;
 
     syncWithServer();
   }, [token, user]);
 
   useEffect(() => {
-    if (!user || !hasCompletedInitialSync || hasCheckedWeekRef.current) return;
-    hasCheckedWeekRef.current = true;
+    if (!user || !token || !hasCompletedInitialSync) return;
 
-    const currentWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    const handleVisibilitySync = () => {
+      if (document.visibilityState === 'visible') {
+        setClockTick(Date.now());
+        syncWithServer().catch(() => {});
+      }
+    };
+
+    const handleFocusSync = () => {
+      setClockTick(Date.now());
+      syncWithServer().catch(() => {});
+    };
+
+    const timer = setInterval(() => {
+      syncWithServer().catch(() => {});
+    }, 60000);
+
+    window.addEventListener('focus', handleFocusSync);
+    document.addEventListener('visibilitychange', handleVisibilitySync);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocusSync);
+      document.removeEventListener('visibilitychange', handleVisibilitySync);
+    };
+  }, [user, token, hasCompletedInitialSync, config]);
+
+  useEffect(() => {
+    if (!user || !hasCompletedInitialSync) return;
     const weekHasAnyActivities = currentWeek.some((day) =>
       Object.values(day || {}).some((slot) => Array.isArray(slot) && slot.length > 0),
     );
@@ -612,40 +657,43 @@ export const RoutineProvider = ({ children }) => {
             }
           : {}),
       }));
-    } else if (config.lastWeekStart !== currentWeekStart) {
-      const alreadyPreparedThisWeek =
-        config.plannedWeekStart === currentWeekStart ||
-        config.lastAutoShuffleWeek === currentWeekStart ||
-        weekHasAnyActivities;
-
-      setConfig((prev) => ({
-        ...prev,
-        shufflesUsed: 0,
-        lastWeekStart: currentWeekStart,
-        ...(alreadyPreparedThisWeek
-          ? {
-              lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart,
-              plannedWeekStart: prev.plannedWeekStart || currentWeekStart,
-            }
-          : {
-              plannedWeekStart: '',
-            }),
-      }));
-
-      if (config.autoShuffle && !alreadyPreparedThisWeek) {
-        setTimeout(() => {
-          executeShuffle(activitiesPool, { ...config, lastAutoShuffleWeek: currentWeekStart });
-          setConfig((prev) => ({
-            ...prev,
-            shufflesUsed: 0,
-            lastWeekStart: currentWeekStart,
-            lastAutoShuffleWeek: currentWeekStart,
-            plannedWeekStart: currentWeekStart,
-          }));
-        }, 500);
-      }
+      return;
     }
-  }, [user, hasCompletedInitialSync, config, currentWeek, activitiesPool]);
+
+    if (config.lastWeekStart === currentWeekStart) return;
+
+    const alreadyPreparedThisWeek =
+      config.plannedWeekStart === currentWeekStart ||
+      config.lastAutoShuffleWeek === currentWeekStart ||
+      weekHasAnyActivities;
+
+    setConfig((prev) => ({
+      ...prev,
+      shufflesUsed: 0,
+      lastWeekStart: currentWeekStart,
+      ...(alreadyPreparedThisWeek
+        ? {
+            lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart,
+            plannedWeekStart: prev.plannedWeekStart || currentWeekStart,
+          }
+        : {
+            plannedWeekStart: '',
+          }),
+    }));
+
+    if (config.autoShuffle && !alreadyPreparedThisWeek) {
+      setTimeout(() => {
+        executeShuffle(activitiesPool, { ...config, lastAutoShuffleWeek: currentWeekStart });
+        setConfig((prev) => ({
+          ...prev,
+          shufflesUsed: 0,
+          lastWeekStart: currentWeekStart,
+          lastAutoShuffleWeek: currentWeekStart,
+          plannedWeekStart: currentWeekStart,
+        }));
+      }, 250);
+    }
+  }, [user, hasCompletedInitialSync, config, currentWeek, activitiesPool, currentWeekStart]);
 
   useEffect(() => {
     if (!hasCompletedInitialSync) return;
@@ -672,11 +720,10 @@ export const RoutineProvider = ({ children }) => {
 
   const updateDayData = (dateStr, shiftKey, activityId, newData, activitySnapshot) => {
     const key = buildHistoryKey(dateStr, shiftKey, activityId);
-    const previous = getExactHistoryEntry(history, dateStr, shiftKey, activityId) || {};
     setHistory((prev) => ({
       ...prev,
       [key]: {
-        ...previous,
+        ...(getExactHistoryEntry(prev, dateStr, shiftKey, activityId) || {}),
         ...newData,
         ...(activitySnapshot ? { activity: activitySnapshot } : {}),
         lastUpdated: new Date().toISOString(),
@@ -686,12 +733,11 @@ export const RoutineProvider = ({ children }) => {
 
   const toggleComplete = (dateStr, shiftKey, activityId, activitySnapshot) => {
     const key = buildHistoryKey(dateStr, shiftKey, activityId);
-    const previous = getExactHistoryEntry(history, dateStr, shiftKey, activityId) || {};
     setHistory((prev) => ({
       ...prev,
       [key]: {
-        ...previous,
-        completed: !previous?.completed,
+        ...(getExactHistoryEntry(prev, dateStr, shiftKey, activityId) || {}),
+        completed: !getExactHistoryEntry(prev, dateStr, shiftKey, activityId)?.completed,
         ...(activitySnapshot ? { activity: activitySnapshot } : {}),
         lastUpdated: new Date().toISOString(),
       },
@@ -703,6 +749,7 @@ export const RoutineProvider = ({ children }) => {
     const pool = (poolOverride && poolOverride.length > 0) ? poolOverride : [...activitiesPool];
     const targetShifts = getConfiguredShifts(activeConfig);
     const slotLimit = Math.max(1, Number(activeConfig.maxActivitiesPerSlot) || 1);
+    const isSundayPauseLocked = activeConfig.sundayMode === 'pause';
 
     if (!pool || pool.length === 0) {
       setCurrentWeek(buildEmptyWeek(targetShifts));
@@ -729,6 +776,7 @@ export const RoutineProvider = ({ children }) => {
 
     const pushActivity = (dayIndex, shiftKey, activity) => {
       if (dayIndex < 0 || dayIndex > 6 || !targetShifts.includes(shiftKey)) return false;
+      if (isSundayPauseLocked && dayIndex === 6 && activity?.id !== FIXED_SUNDAY.id) return false;
       const slot = weekPlan[dayIndex][shiftKey];
       const nextActivity = withAssignedTask(activity);
       if (!Array.isArray(slot) || slot.length >= slotLimit) return false;
@@ -758,6 +806,7 @@ export const RoutineProvider = ({ children }) => {
       if (pinnedDays.length === 0) return;
 
       pinnedDays.forEach((dayIndex) => {
+        if (isSundayPauseLocked && dayIndex === 6) return;
         allowedShifts.forEach((shiftKey) => {
           const task = activity.defaultTasks?.length
             ? activity.defaultTasks[Math.floor(Math.random() * activity.defaultTasks.length)]
@@ -784,7 +833,10 @@ export const RoutineProvider = ({ children }) => {
       const allowedShifts = card.rules?.allowedShifts?.length ? [...card.rules.allowedShifts] : [...targetShifts];
       let placed = false;
 
-      allowedDays.sort(() => Math.random() - 0.5).forEach((dayIndex) => {
+      allowedDays
+        .filter((dayIndex) => !(isSundayPauseLocked && dayIndex === 6))
+        .sort(() => Math.random() - 0.5)
+        .forEach((dayIndex) => {
         if (placed || dayIndex > 6) return;
         allowedShifts.sort(() => Math.random() - 0.5).forEach((shiftKey) => {
           if (placed) return;
@@ -797,6 +849,7 @@ export const RoutineProvider = ({ children }) => {
     });
 
     for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      if (isSundayPauseLocked && dayIndex === 6) continue;
       for (const shiftKey of targetShifts) {
         while ((weekPlan[dayIndex][shiftKey] || []).length < slotLimit) {
           const candidates = pool.filter((activity) => {
@@ -1032,7 +1085,6 @@ export const RoutineProvider = ({ children }) => {
       }
 
       setHasCompletedInitialSync(true);
-      hasCheckedWeekRef.current = false;
       refreshNotificationState().catch(() => {});
       return { success: true };
     } catch (e) {
