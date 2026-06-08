@@ -642,20 +642,11 @@ export const RoutineProvider = ({ children }) => {
 
   useEffect(() => {
     if (!user || !hasCompletedInitialSync) return;
-    const weekHasAnyActivities = currentWeek.some((day) =>
-      Object.values(day || {}).some((slot) => Array.isArray(slot) && slot.length > 0),
-    );
 
     if (!config.lastWeekStart) {
       setConfig((prev) => ({
         ...prev,
         lastWeekStart: currentWeekStart,
-        ...(weekHasAnyActivities
-          ? {
-              lastAutoShuffleWeek: prev.lastAutoShuffleWeek || currentWeekStart,
-              plannedWeekStart: prev.plannedWeekStart || currentWeekStart,
-            }
-          : {}),
       }));
       return;
     }
@@ -664,8 +655,7 @@ export const RoutineProvider = ({ children }) => {
 
     const alreadyPreparedThisWeek =
       config.plannedWeekStart === currentWeekStart ||
-      config.lastAutoShuffleWeek === currentWeekStart ||
-      weekHasAnyActivities;
+      config.lastAutoShuffleWeek === currentWeekStart;
 
     setConfig((prev) => ({
       ...prev,
@@ -678,6 +668,7 @@ export const RoutineProvider = ({ children }) => {
           }
         : {
             plannedWeekStart: '',
+            lastAutoShuffleWeek: '',
           }),
     }));
 
