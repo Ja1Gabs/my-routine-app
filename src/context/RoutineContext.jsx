@@ -674,7 +674,7 @@ export const RoutineProvider = ({ children }) => {
 
     if (config.autoShuffle && !alreadyPreparedThisWeek) {
       setTimeout(() => {
-        executeShuffle(activitiesPool, { ...config, lastAutoShuffleWeek: currentWeekStart });
+        executeShuffle(activitiesPool, { ...config, lastAutoShuffleWeek: currentWeekStart }, { preserveToday: false });
         setConfig((prev) => ({
           ...prev,
           shufflesUsed: 0,
@@ -735,7 +735,8 @@ export const RoutineProvider = ({ children }) => {
     }));
   };
 
-  const executeShuffle = (poolOverride = null, configOverride = null) => {
+  const executeShuffle = (poolOverride = null, configOverride = null, options = {}) => {
+    const { preserveToday = false } = options;
     const activeConfig = normalizeConfig(configOverride || config);
     const pool = (poolOverride && poolOverride.length > 0) ? poolOverride : [...activitiesPool];
     const targetShifts = getConfiguredShifts(activeConfig);
@@ -758,7 +759,7 @@ export const RoutineProvider = ({ children }) => {
       const dayObj = {};
 
       targetShifts.forEach((shift) => {
-        const shouldPreserveSlot = isPastDay || isTodayDate;
+        const shouldPreserveSlot = isPastDay || (preserveToday && isTodayDate);
         dayObj[shift] = shouldPreserveSlot ? (currentWeek?.[i]?.[shift] || []).map(withAssignedTask) : [];
       });
 
@@ -871,8 +872,7 @@ export const RoutineProvider = ({ children }) => {
 
     setIsShuffling(true);
     await new Promise((resolve) => setTimeout(resolve, 400));
-    executeShuffle();
-    const currentWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    executeShuffle(undefined, undefined, { preserveToday: false });
     setConfig((prev) => ({
       ...prev,
       shufflesUsed: (prev.shufflesUsed || 0) + 1,
