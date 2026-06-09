@@ -237,6 +237,31 @@ const stripImagesFromHistory = (history = {}) =>
     ]),
   );
 
+const stripLargePayloadsForStorage = (snapshot = {}) => ({
+  ...snapshot,
+  config: {
+    ...(snapshot.config || {}),
+    backgroundImage: '',
+  },
+  history: stripImagesFromHistory(snapshot.history),
+  canvasNodes: Array.isArray(snapshot.canvasNodes)
+    ? snapshot.canvasNodes.map((node) =>
+        node && typeof node === 'object' && node.type === 'image'
+          ? { ...node, url: '' }
+          : node,
+      )
+    : [],
+});
+
+const safeSetJSON = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 const getLocalDB = () => {
   const primaryRaw = readJSON(DB_KEY, null) || readJSON(LEGACY_DB_KEY, null) || {};
   const primary = normalizeSnapshot(primaryRaw);
@@ -381,36 +406,26 @@ export const RoutineProvider = ({ children }) => {
 
   const persistLocalSnapshot = (snapshot) => {
     const normalized = normalizeSnapshot(snapshot, config);
-    try {
-      localStorage.setItem(DB_KEY, JSON.stringify(normalized));
-    } catch (error) {
-      const fallbackSnapshot = {
-        ...normalized,
-        history: stripImagesFromHistory(normalized.history),
-      };
-
-      localStorage.setItem(DB_KEY, JSON.stringify(fallbackSnapshot));
+    const savedPrimary = safeSetJSON(DB_KEY, normalized);
+    if (!savedPrimary) {
+      const compactSnapshot = stripLargePayloadsForStorage(normalized);
+      safeSetJSON(DB_KEY, compactSnapshot);
       toast.warning(
-        'Imagem muito pesada para armazenamento local',
-        'A rotina foi salva, mas algumas imagens podem precisar ser reenviadas se o navegador ficar sem espaco.',
+        'Armazenamento local cheio',
+        'A rotina vai seguir sincronizando com o servidor, mas algumas imagens podem nao caber no cache do navegador.',
       );
     }
 
     const backups = readJSON(BACKUP_KEY, []);
     const savedAt = normalized.meta.updatedAt || new Date().toISOString();
-    const backupSafeSnapshot = {
-      ...normalized,
-      history: stripImagesFromHistory(normalized.history),
-    };
+    const backupSafeSnapshot = stripLargePayloadsForStorage(normalized);
     const nextBackups = [
       { savedAt, data: backupSafeSnapshot },
       ...backups.filter((entry) => entry?.savedAt !== savedAt),
     ].slice(0, 5);
 
-    try {
-      localStorage.setItem(BACKUP_KEY, JSON.stringify(nextBackups));
-    } catch (error) {
-      localStorage.setItem(BACKUP_KEY, JSON.stringify(nextBackups.slice(0, 1)));
+    if (!safeSetJSON(BACKUP_KEY, nextBackups)) {
+      safeSetJSON(BACKUP_KEY, nextBackups.slice(0, 1));
     }
   };
 
@@ -1172,10 +1187,23 @@ export const RoutineProvider = ({ children }) => {
           login,
           register,
           syncNow: async () => {
-            const snapshot = buildSnapshot({ updatedAt: new Date().toISOString() });
-            lastChangeAtRef.current = snapshot.meta.updatedAt;
+            const updatedAt = new Date().toISOString();
+            const snapshot = buildSnapshot({ updatedAt });
+            lastChangeAtRef.current = updatedAt;
+
+            const uploadResult = await postSnapshotToServer(snapshot);
+            if (!uploadResult.ok) return uploadResult;
+
             persistLocalSnapshot(snapshot);
-            return postSnapshotToServer(snapshot);
+
+            try {
+              await wait(350);
+              await syncWithServer();
+            } catch (error) {
+              // upload succeeded; best-effort refresh only
+            }
+
+            return uploadResult;
           },
           logout: () => {
             localStorage.removeItem(TOKEN_KEY);
@@ -1183,7 +1211,11 @@ export const RoutineProvider = ({ children }) => {
             window.location.reload();
           },
           saveActivity: async (activity) => {
-            const nextActivity = activity.id ? activity : { ...activity, id: crypto.randomUUID() };
+            const nextActivity = {
+              ...activity,
+              id: activity.id || crypto.randomUUID(),
+              updatedAt: new Date().toISOString(),
+            };
             const nextActivities = nextActivity.id && activitiesPool.some((item) => item.id === nextActivity.id)
               ? activitiesPool.map((item) => (item.id === nextActivity.id ? nextActivity : item))
               : [...activitiesPool, nextActivity];
@@ -1196,7 +1228,11 @@ export const RoutineProvider = ({ children }) => {
 
             const nextMap = new Map(activitiesPool.map((activity) => [activity.id, activity]));
             normalizedActivities.forEach((activity) => {
-              const nextActivity = activity.id ? activity : { ...activity, id: crypto.randomUUID() };
+              const nextActivity = {
+                ...activity,
+                id: activity.id || crypto.randomUUID(),
+                updatedAt: activity.updatedAt || new Date().toISOString(),
+              };
               nextMap.set(nextActivity.id, nextActivity);
             });
 
